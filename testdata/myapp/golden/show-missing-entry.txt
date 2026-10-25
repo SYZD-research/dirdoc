@@ -1,0 +1,5 @@
+$ dirdoc src/main.rs#nope
+exit: 3
+--- stdout
+--- stderr
+dirdoc: src/main.rs has no entry "nope"

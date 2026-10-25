@@ -1,0 +1,31 @@
+$ dirdoc src/cli -f json
+exit: 0
+--- stdout
+{
+  "dirdoc_view": 1,
+  "kind": "directory",
+  "path": "src/cli/",
+  "source": null,
+  "inherited_from": {
+    "source": "src/.dirdoc/.dirdoc_dsd",
+    "ref": "src/#cli",
+    "note": "引数解析とサブコマンド"
+  },
+  "summary": "引数解析とサブコマンド",
+  "tree": null,
+  "dsd": [
+    {
+      "id": "cli",
+      "ref": "src/#cli",
+      "name": "cli",
+      "paths": [
+        "src/cli/"
+      ],
+      "document": "clap の derive でコマンドを定義する。"
+    }
+  ],
+  "files": [],
+  "subdirs": [],
+  "warnings": []
+}
+--- stderr

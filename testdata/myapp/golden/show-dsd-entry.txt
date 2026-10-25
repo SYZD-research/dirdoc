@@ -1,0 +1,9 @@
+$ dirdoc src/#cli
+exit: 0
+--- stdout
+# dsd cli `src/#cli`
+
+Describes `src/cli/`.
+
+clap の derive でコマンドを定義する。
+--- stderr

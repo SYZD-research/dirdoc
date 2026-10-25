@@ -1,0 +1,13 @@
+$ dirdoc pool.rs#spawn
+exit: 0
+--- stdout
+# fn spawn(n) `pool.rs#spawn`
+
+> ワーカーを n 個起動する
+
+n は [[../main.rs#MAX_AGENTS]] を超えられない。
+
+## References
+
+- [[../main.rs#MAX_AGENTS]] — var MAX_AGENTS: 同時に処理するエージェント数の上限（既定 8）
+--- stderr

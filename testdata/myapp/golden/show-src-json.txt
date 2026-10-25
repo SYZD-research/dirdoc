@@ -1,0 +1,107 @@
+$ dirdoc src -f json
+exit: 0
+--- stdout
+{
+  "dirdoc_view": 1,
+  "kind": "directory",
+  "path": "src/",
+  "source": "src/.dirdoc/.dirdoc_dsd",
+  "inherited_from": null,
+  "summary": "アプリ本体のソースコード。CLI とエージェント実行系からなる。",
+  "tree": {
+    "name": ".",
+    "type": "dir",
+    "dsd": "src",
+    "ref": "src/#src",
+    "children": [
+      {
+        "name": "agent",
+        "type": "dir",
+        "note": "エージェントの起動と管理",
+        "has_dirdoc": true
+      },
+      {
+        "name": "cli",
+        "type": "dir",
+        "dsd": "cli",
+        "ref": "src/#cli",
+        "note": "引数解析とサブコマンド"
+      },
+      {
+        "name": "main.rs",
+        "type": "file",
+        "note": "エントリポイント",
+        "has_pfd": true
+      }
+    ]
+  },
+  "dsd": [
+    {
+      "id": "src",
+      "ref": "src/#src",
+      "name": "ソースルート",
+      "paths": [
+        "src/"
+      ],
+      "document": "クレートのルート。`main.rs` が [[src/cli/]] と [[src/agent/]] を束ねる。\n\n#### 構成\n詳細は各ディレクトリを参照。"
+    },
+    {
+      "id": "cli",
+      "ref": "src/#cli",
+      "name": "cli",
+      "paths": [
+        "src/cli/"
+      ],
+      "document": "clap の derive でコマンドを定義する。"
+    }
+  ],
+  "files": [
+    {
+      "path": "src/main.rs",
+      "ref": "src/main.rs",
+      "source": "src/.dirdoc/main.rs.dirdoc_pfd",
+      "stale": null,
+      "summary": "CLIのエントリポイント。引数を解析して各サブコマンドへ委譲する。",
+      "overview": {
+        "types": [
+          {
+            "id": "Config",
+            "ref": "src/main.rs#Config",
+            "name": "Config",
+            "summary": "コマンドライン引数と設定ファイルから組み立てる実行時設定"
+          }
+        ],
+        "functions": [
+          {
+            "id": "main",
+            "ref": "src/main.rs#main",
+            "name": "main()",
+            "summary": "プロセスのエントリポイント"
+          },
+          {
+            "id": "check_stdout",
+            "ref": "src/main.rs#check_stdout",
+            "name": "check_stdout()",
+            "summary": "標準出力がTTYかを判定する"
+          }
+        ],
+        "variables": [
+          {
+            "id": "MAX_AGENTS",
+            "ref": "src/main.rs#MAX_AGENTS",
+            "name": "MAX_AGENTS",
+            "summary": "同時に処理するエージェント数の上限（既定 8）"
+          }
+        ]
+      }
+    }
+  ],
+  "subdirs": [
+    {
+      "path": "src/agent/",
+      "summary": "エージェントの起動・監視・終了を担う。"
+    }
+  ],
+  "warnings": []
+}
+--- stderr

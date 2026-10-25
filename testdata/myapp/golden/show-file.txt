@@ -1,0 +1,43 @@
+$ dirdoc src/main.rs
+exit: 0
+--- stdout
+# src/main.rs
+
+> CLIのエントリポイント。引数を解析して各サブコマンドへ委譲する。
+
+## Overview
+
+- type `Config` `#Config` — コマンドライン引数と設定ファイルから組み立てる実行時設定
+- fn `main()` `#main` — プロセスのエントリポイント
+- fn `check_stdout()` `#check_stdout` — 標準出力がTTYかを判定する
+- var `MAX_AGENTS` `#MAX_AGENTS` — 同時に処理するエージェント数の上限（既定 8）
+
+## Types
+
+### Config `#Config`
+
+> コマンドライン引数と設定ファイルから組み立てる実行時設定
+
+[[src/main.rs#main]] で一度だけ作り、各サブコマンドへ参照で渡す。
+
+## Functions
+
+### main() `#main`
+
+> プロセスのエントリポイント
+
+[[src/main.rs#check_stdout]] で出力先を判定してから、[[src/agent/pool.rs#spawn]] でワーカーを起動する。
+
+### check_stdout() `#check_stdout`
+
+> 標準出力がTTYかを判定する
+
+TTYなら色付き出力を有効にする。上限値は [[src/main.rs#MAX_AGENTS]] を参照。
+
+#### 注意
+Windows では `GetConsoleMode` を使う。
+
+## Variables
+
+- `MAX_AGENTS` `#MAX_AGENTS` — 同時に処理するエージェント数の上限（既定 8）
+--- stderr

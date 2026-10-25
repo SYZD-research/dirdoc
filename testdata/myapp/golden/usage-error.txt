@@ -1,0 +1,6 @@
+$ dirdoc compile src/
+exit: 2
+--- stdout
+--- stderr
+dirdoc: accepts 2 arg(s), received 1
+Run 'dirdoc compile --help' for usage.

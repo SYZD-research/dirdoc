@@ -1,0 +1,14 @@
+$ dirdoc src/main.rs#main
+exit: 0
+--- stdout
+# fn main() `src/main.rs#main`
+
+> プロセスのエントリポイント
+
+[[src/main.rs#check_stdout]] で出力先を判定してから、[[src/agent/pool.rs#spawn]] でワーカーを起動する。
+
+## References
+
+- [[src/main.rs#check_stdout]] — fn check_stdout(): 標準出力がTTYかを判定する
+- [[src/agent/pool.rs#spawn]] — fn spawn(n): ワーカーを n 個起動する
+--- stderr

@@ -1,0 +1,27 @@
+$ dirdoc export src/cli/args.rs
+exit: 0
+--- stdout
+# dirdoc pfd: src/cli/args.rs
+# Fill in the summary and the entries, then run:
+#   dirdoc compile src/cli/args.rs <this file>
+
+summary = ""
+
+# [[types]]
+# name = "Config"
+# summary = "One-line description"
+# document = '''
+# Markdown body (optional)
+# '''
+#
+# [[functions]]
+# name = "check_stdout()"   # the id defaults to the part before "(" (set id = "..." to override)
+# summary = "One-line description"
+# document = '''
+# Markdown body (optional). Link with [[#id]], [[other.rs#id]] or [[dir/]].
+# '''
+#
+# [[variables]]
+# name = "MAX_AGENTS"
+# summary = "What it is for"
+--- stderr

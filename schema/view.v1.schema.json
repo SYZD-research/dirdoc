@@ -1,0 +1,258 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:dirdoc:schema:view:v1",
+  "title": "dirdoc JSON output, version 1",
+  "description": "Output of `dirdoc -f json`, `dirdoc check -f json` and `dirdoc search -f json`. Paths and refs are relative to the directory dirdoc ran in; refs can be passed back to `dirdoc`.",
+  "type": "object",
+  "required": ["dirdoc_view", "kind"],
+  "properties": { "dirdoc_view": { "const": 1 } },
+  "oneOf": [
+    { "$ref": "#/$defs/directory" },
+    { "$ref": "#/$defs/file" },
+    { "$ref": "#/$defs/entry" },
+    { "$ref": "#/$defs/list" },
+    { "$ref": "#/$defs/check" },
+    { "$ref": "#/$defs/search" }
+  ],
+  "$defs": {
+    "diagnostic": {
+      "type": "object",
+      "required": ["severity", "code", "message"],
+      "properties": {
+        "severity": { "enum": ["error", "warning"] },
+        "code": { "type": "string" },
+        "path": { "type": "string" },
+        "file": { "type": "string" },
+        "line": { "type": "integer", "minimum": 1 },
+        "message": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "diagnostics": { "type": "array", "items": { "$ref": "#/$defs/diagnostic" } },
+    "treeNode": {
+      "type": "object",
+      "required": ["name", "type"],
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "enum": ["dir", "file"] },
+        "dsd": { "type": "string" },
+        "ref": { "type": "string" },
+        "note": { "type": "string" },
+        "more": { "type": "boolean" },
+        "has_dirdoc": { "type": "boolean" },
+        "has_pfd": { "type": "boolean" },
+        "children": { "type": "array", "items": { "$ref": "#/$defs/treeNode" } }
+      },
+      "additionalProperties": false
+    },
+    "dsdEntry": {
+      "type": "object",
+      "required": ["id", "ref", "name", "paths"],
+      "properties": {
+        "id": { "type": "string" },
+        "ref": { "type": "string" },
+        "name": { "type": "string" },
+        "paths": { "type": "array", "items": { "type": "string" } },
+        "document": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "overviewItem": {
+      "type": "object",
+      "required": ["id", "ref", "name", "summary"],
+      "properties": {
+        "id": { "type": "string" },
+        "ref": { "type": "string" },
+        "name": { "type": "string" },
+        "summary": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "overview": {
+      "type": "object",
+      "required": ["types", "functions", "variables"],
+      "properties": {
+        "types": { "type": "array", "items": { "$ref": "#/$defs/overviewItem" } },
+        "functions": { "type": "array", "items": { "$ref": "#/$defs/overviewItem" } },
+        "variables": { "type": "array", "items": { "$ref": "#/$defs/overviewItem" } }
+      },
+      "additionalProperties": false
+    },
+    "entryBody": {
+      "type": "object",
+      "required": ["id", "ref", "name", "summary"],
+      "properties": {
+        "id": { "type": "string" },
+        "ref": { "type": "string" },
+        "name": { "type": "string" },
+        "summary": { "type": "string" },
+        "document": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "entryBodies": { "type": "array", "items": { "$ref": "#/$defs/entryBody" } },
+    "stale": {
+      "type": ["boolean", "null"],
+      "description": "Whether the file changed since its PFD was compiled; null when unknown (always null before Phase 2)."
+    },
+    "fileSummary": {
+      "type": "object",
+      "required": ["path", "ref", "source", "stale", "summary"],
+      "properties": {
+        "path": { "type": "string" },
+        "ref": { "type": "string" },
+        "source": { "type": "string" },
+        "stale": { "$ref": "#/$defs/stale" },
+        "summary": { "type": "string" },
+        "overview": { "$ref": "#/$defs/overview" },
+        "types": { "$ref": "#/$defs/entryBodies" },
+        "functions": { "$ref": "#/$defs/entryBodies" },
+        "variables": { "$ref": "#/$defs/entryBodies" }
+      },
+      "additionalProperties": false
+    },
+    "directory": {
+      "type": "object",
+      "required": ["dirdoc_view", "kind", "path", "source", "inherited_from", "summary", "tree", "dsd", "files", "subdirs", "warnings"],
+      "properties": {
+        "dirdoc_view": { "const": 1 },
+        "kind": { "const": "directory" },
+        "path": { "type": "string" },
+        "source": { "type": ["string", "null"] },
+        "inherited_from": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "required": ["source"],
+              "properties": {
+                "source": { "type": "string" },
+                "ref": { "type": "string" },
+                "note": { "type": "string" }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "summary": { "type": "string" },
+        "tree": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/treeNode" }] },
+        "dsd": { "type": "array", "items": { "$ref": "#/$defs/dsdEntry" } },
+        "files": { "type": "array", "items": { "$ref": "#/$defs/fileSummary" } },
+        "subdirs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "summary"],
+            "properties": { "path": { "type": "string" }, "summary": { "type": "string" } },
+            "additionalProperties": false
+          }
+        },
+        "warnings": { "$ref": "#/$defs/diagnostics" }
+      },
+      "additionalProperties": false
+    },
+    "file": {
+      "type": "object",
+      "required": ["dirdoc_view", "kind", "path", "ref", "source", "stale", "summary", "overview", "warnings"],
+      "properties": {
+        "dirdoc_view": { "const": 1 },
+        "kind": { "const": "file" },
+        "path": { "type": "string" },
+        "ref": { "type": "string" },
+        "source": { "type": "string" },
+        "stale": { "$ref": "#/$defs/stale" },
+        "summary": { "type": "string" },
+        "overview": { "$ref": "#/$defs/overview" },
+        "types": { "$ref": "#/$defs/entryBodies" },
+        "functions": { "$ref": "#/$defs/entryBodies" },
+        "variables": { "$ref": "#/$defs/entryBodies" },
+        "warnings": { "$ref": "#/$defs/diagnostics" }
+      },
+      "additionalProperties": false
+    },
+    "entry": {
+      "type": "object",
+      "required": ["dirdoc_view", "kind", "ref", "path", "source", "id", "name", "refs", "warnings"],
+      "properties": {
+        "dirdoc_view": { "const": 1 },
+        "kind": { "enum": ["type", "function", "variable", "dsd-entry"] },
+        "ref": { "type": "string" },
+        "path": { "type": "string" },
+        "source": { "type": "string" },
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "summary": { "type": "string" },
+        "document": { "type": "string" },
+        "paths": { "type": "array", "items": { "type": "string" } },
+        "refs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["ref", "resolved"],
+            "properties": {
+              "ref": { "type": "string" },
+              "resolved": { "type": "boolean" },
+              "kind": { "enum": ["directory", "file", "type", "function", "variable", "dsd-entry"] },
+              "name": { "type": "string" },
+              "summary": { "type": "string" },
+              "reason": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "warnings": { "$ref": "#/$defs/diagnostics" }
+      },
+      "additionalProperties": false
+    },
+    "list": {
+      "type": "object",
+      "required": ["dirdoc_view", "kind", "views"],
+      "properties": {
+        "dirdoc_view": { "const": 1 },
+        "kind": { "const": "list" },
+        "views": { "type": "array", "items": { "$ref": "#/$defs/directory" } }
+      },
+      "additionalProperties": false
+    },
+    "check": {
+      "type": "object",
+      "required": ["dirdoc_view", "kind", "documents", "errors", "warnings", "diagnostics"],
+      "properties": {
+        "dirdoc_view": { "const": 1 },
+        "kind": { "const": "check" },
+        "documents": { "type": "integer", "minimum": 0 },
+        "errors": { "type": "integer", "minimum": 0 },
+        "warnings": { "type": "integer", "minimum": 0 },
+        "diagnostics": { "$ref": "#/$defs/diagnostics" }
+      },
+      "additionalProperties": false
+    },
+    "search": {
+      "type": "object",
+      "required": ["dirdoc_view", "kind", "query", "total", "results"],
+      "properties": {
+        "dirdoc_view": { "const": 1 },
+        "kind": { "const": "search" },
+        "query": { "type": "string" },
+        "total": { "type": "integer", "minimum": 0 },
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["ref", "kind", "name", "field", "snippet"],
+            "properties": {
+              "ref": { "type": "string" },
+              "kind": { "enum": ["directory", "file", "type", "function", "variable", "dsd-entry", "tree-node"] },
+              "name": { "type": "string" },
+              "summary": { "type": "string" },
+              "field": { "enum": ["name", "summary", "document", "note"] },
+              "snippet": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

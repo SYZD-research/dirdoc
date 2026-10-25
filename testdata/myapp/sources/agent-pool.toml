@@ -1,0 +1,8 @@
+summary = "ワーカーのプール。"
+
+[[functions]]
+name = "spawn(n)"
+summary = "ワーカーを n 個起動する"
+document = '''
+n は [[../main.rs#MAX_AGENTS]] を超えられない。
+'''

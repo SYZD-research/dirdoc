@@ -1,0 +1,56 @@
+$ dirdoc guide --lang ja
+exit: 0
+--- stdout
+## dirdoc
+
+このリポジトリでは、ディレクトリとファイルの説明を dirdoc で管理している。説明は各ディレクトリの `.dirdoc/` に置かれている。
+
+### 読む
+
+- `dirdoc <dir>` でディレクトリの概要・ツリー・各ファイルの目次を、`dirdoc <file>` でファイルの詳細を、`dirdoc '<file>#<id>'` で個々の型・関数の説明を読む。量を減らすなら `--brief`、本文まで全部なら `--full`、JSON なら `-f json`。
+- `[[…]]` は参照。中身をそのまま `dirdoc '…'` に渡すと開ける。
+- 検索は `dirdoc search <語>`。`.dirdoc/` 内のファイルは圧縮されていて grep できない。
+- `.dirdoc/` 内のファイルを直接読み書きしない。
+
+### 書く
+
+コードを変えたら、対応する説明も更新する。
+
+- 一部だけ直す: 変更点だけを書いて `--merge` で反映する。エントリは id（省略時は name から導出した id）で突き合わせ、`delete = true` で削除する。
+
+  ```bash
+  dirdoc compile src/main.rs --merge - <<'EOF'
+  [[functions]]
+  name = "check_stdout()"
+  summary = "標準出力がTTYかを判定する"
+  EOF
+  ```
+
+- 全体を書き直す: `dirdoc export <target> > /tmp/x.toml` → 編集 → `dirdoc compile <target> /tmp/x.toml`。説明がまだ無いときは、export がひな形を出す。
+- 最後に `dirdoc check` を通す。
+
+### 元ファイル（TOML）の形
+
+ファイル（PFD）:
+
+```toml
+summary = "このファイルの役割"
+
+[[types]]                      # クラス・構造体など
+name = "Config"
+summary = "1 行の説明"
+
+[[functions]]
+name = "check_stdout()"        # id は name の "(" "<" "[" より前（id = "..." で明示もできる）
+summary = "1 行の説明"
+document = '''
+Markdown の本文。[[#MAX_AGENTS]]、[[other.rs#parse]]、[[dir/]] のように参照できる。
+'''
+
+[[variables]]
+name = "MAX_AGENTS"
+summary = "用途"
+```
+
+ディレクトリ（DSD）には `summary`、`tree`（`tree` コマンド風の記法。`[[#id]]` でエントリへのリンク、` # ` より後ろはメモ）、`[[dsd]]`（`id`・`name`・`document`）を書く。
+--- stderr

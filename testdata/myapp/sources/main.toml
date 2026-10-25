@@ -1,0 +1,29 @@
+summary = "CLIのエントリポイント。引数を解析して各サブコマンドへ委譲する。"
+
+[[types]]
+name = "Config"
+summary = "コマンドライン引数と設定ファイルから組み立てる実行時設定"
+document = '''
+[[#main]] で一度だけ作り、各サブコマンドへ参照で渡す。
+'''
+
+[[functions]]
+name = "main()"
+summary = "プロセスのエントリポイント"
+document = '''
+[[#check_stdout]] で出力先を判定してから、[[agent/pool.rs#spawn]] でワーカーを起動する。
+'''
+
+[[functions]]
+name = "check_stdout()"
+summary = "標準出力がTTYかを判定する"
+document = '''
+TTYなら色付き出力を有効にする。上限値は [[#MAX_AGENTS]] を参照。
+
+## 注意
+Windows では `GetConsoleMode` を使う。
+'''
+
+[[variables]]
+name = "MAX_AGENTS"
+summary = "同時に処理するエージェント数の上限（既定 8）"

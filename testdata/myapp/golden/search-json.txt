@@ -1,0 +1,20 @@
+$ dirdoc search tty -f json
+exit: 0
+--- stdout
+{
+  "dirdoc_view": 1,
+  "kind": "search",
+  "query": "tty",
+  "total": 1,
+  "results": [
+    {
+      "ref": "src/main.rs#check_stdout",
+      "kind": "function",
+      "name": "check_stdout()",
+      "summary": "標準出力がTTYかを判定する",
+      "field": "summary",
+      "snippet": "標準出力がTTYかを判定する"
+    }
+  ]
+}
+--- stderr

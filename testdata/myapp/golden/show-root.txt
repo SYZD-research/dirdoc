@@ -1,0 +1,22 @@
+$ dirdoc 
+exit: 0
+--- stdout
+# ./
+
+> 架空の CLI アプリ myapp。エージェントを並列に動かす。
+
+## Tree
+
+```text
+./
+├── docs/
+├── src/     (dirdoc)  # アプリ本体
+├── target/            # ビルド成果物（記述不要）
+├── Cargo.toml
+└── dirdoc.toml
+```
+
+## Subdirectories
+
+- `src/` — アプリ本体のソースコード。CLI とエージェント実行系からなる。
+--- stderr

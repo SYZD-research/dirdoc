@@ -1,0 +1,12 @@
+$ dirdoc check -f json
+exit: 0
+--- stdout
+{
+  "dirdoc_view": 1,
+  "kind": "check",
+  "documents": 5,
+  "errors": 0,
+  "warnings": 0,
+  "diagnostics": []
+}
+--- stderr

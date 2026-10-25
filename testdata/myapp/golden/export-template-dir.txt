@@ -1,0 +1,23 @@
+$ dirdoc export src/cli
+exit: 0
+--- stdout
+# dirdoc dsd: src/cli/
+# Fill in the summary and the entries, then run:
+#   dirdoc compile src/cli/ <this file>
+
+summary = ""
+
+tree = '''
+./
+├── args.rs
+└── commands.rs
+'''
+
+# One [[dsd]] table per directory you describe; link it from the tree with [[#id]].
+# [[dsd]]
+# id = "cli"
+# name = "CLI"     # optional; defaults to the name of the tree node that links to it
+# document = '''
+# Markdown body. Link to other entries with [[#id]], [[file#id]] or [[dir/]].
+# '''
+--- stderr

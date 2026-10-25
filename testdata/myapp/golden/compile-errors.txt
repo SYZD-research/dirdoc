@@ -1,0 +1,12 @@
+$ dirdoc compile src/main.rs -
+exit: 1
+--- stdout
+--- stderr
+error[parse] <stdin>:1: unknown key "summray" (did you mean "summary"?)
+warning[summary-empty] <stdin> (src/main.rs): summary is empty
+error[ref-local] <stdin>:6 (src/main.rs#a): [[#nope]] does not exist in this document (if it is not a reference, put it in backticks)
+error[ref-outside] <stdin>:6 (src/main.rs#a): [[../../outside.rs]] points outside the project root
+warning[ref-broken] <stdin>:6 (src/main.rs#a): cannot resolve [[missing.rs#x]]: the file has no PFD (if it is not a reference, put it in backticks)
+error[id-duplicate] <stdin>:9 (src/main.rs#a): duplicate id "a" (also used by functions[0])
+error[id-invalid] <stdin>:14 (src/main.rs functions[2]): cannot derive an id from name "async def f()"; set id explicitly
+dirdoc: nothing written: 5 errors

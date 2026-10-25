@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:dirdoc:schema:dsd:v1",
+  "title": "dirdoc Directory Structure Document (.dirdoc/.dirdoc_dsd), schema version 1",
+  "description": "Stored as UTF-8 JSON, zstd-compressed by default. dirdoc keeps fields it does not know; keys starting with x- are user extensions.",
+  "type": "object",
+  "required": ["format", "version"],
+  "properties": {
+    "format": { "const": "dirdoc/dsd" },
+    "version": { "const": 1 },
+    "summary": { "type": "string", "description": "Short summary of the directory itself." },
+    "tree": { "$ref": "#/$defs/root" },
+    "dsd": {
+      "type": "array",
+      "description": "Documents of directories in the tree, linked from tree nodes by id.",
+      "items": { "$ref": "#/$defs/entry" }
+    }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[\\p{L}\\p{Nd}_.:$-]{1,128}$" },
+    "root": {
+      "allOf": [
+        { "$ref": "#/$defs/node" },
+        { "properties": { "name": { "const": "." }, "type": { "const": "dir" } } }
+      ],
+      "description": "The owner directory itself."
+    },
+    "node": {
+      "type": "object",
+      "required": ["name", "type"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "not": { "pattern": "/" } },
+        "type": { "enum": ["dir", "file"] },
+        "dsd": { "$ref": "#/$defs/id", "description": "Id of the entry of this DSD that documents the node." },
+        "note": { "type": "string" },
+        "more": { "type": "boolean", "description": "The node has children that are not listed (the ... line)." },
+        "children": { "type": "array", "items": { "$ref": "#/$defs/node" } }
+      }
+    },
+    "entry": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string", "description": "Defaults to the name of the tree node that links to the entry." },
+        "document": { "type": "string", "description": "Markdown." }
+      }
+    }
+  }
+}

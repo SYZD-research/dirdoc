@@ -1,0 +1,162 @@
+$ dirdoc -r --brief -f json
+exit: 0
+--- stdout
+{
+  "dirdoc_view": 1,
+  "kind": "list",
+  "views": [
+    {
+      "dirdoc_view": 1,
+      "kind": "directory",
+      "path": "./",
+      "source": ".dirdoc/.dirdoc_dsd",
+      "inherited_from": null,
+      "summary": "架空の CLI アプリ myapp。エージェントを並列に動かす。",
+      "tree": {
+        "name": ".",
+        "type": "dir",
+        "children": [
+          {
+            "name": "docs",
+            "type": "dir"
+          },
+          {
+            "name": "src",
+            "type": "dir",
+            "note": "アプリ本体",
+            "has_dirdoc": true
+          },
+          {
+            "name": "target",
+            "type": "dir",
+            "note": "ビルド成果物（記述不要）"
+          },
+          {
+            "name": "Cargo.toml",
+            "type": "file"
+          },
+          {
+            "name": "dirdoc.toml",
+            "type": "file"
+          }
+        ]
+      },
+      "dsd": [],
+      "files": [],
+      "subdirs": [
+        {
+          "path": "src/",
+          "summary": "アプリ本体のソースコード。CLI とエージェント実行系からなる。"
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "dirdoc_view": 1,
+      "kind": "directory",
+      "path": "src/",
+      "source": "src/.dirdoc/.dirdoc_dsd",
+      "inherited_from": null,
+      "summary": "アプリ本体のソースコード。CLI とエージェント実行系からなる。",
+      "tree": {
+        "name": ".",
+        "type": "dir",
+        "dsd": "src",
+        "ref": "src/#src",
+        "children": [
+          {
+            "name": "agent",
+            "type": "dir",
+            "note": "エージェントの起動と管理",
+            "has_dirdoc": true
+          },
+          {
+            "name": "cli",
+            "type": "dir",
+            "dsd": "cli",
+            "ref": "src/#cli",
+            "note": "引数解析とサブコマンド"
+          },
+          {
+            "name": "main.rs",
+            "type": "file",
+            "note": "エントリポイント",
+            "has_pfd": true
+          }
+        ]
+      },
+      "dsd": [
+        {
+          "id": "src",
+          "ref": "src/#src",
+          "name": "ソースルート",
+          "paths": [
+            "src/"
+          ]
+        },
+        {
+          "id": "cli",
+          "ref": "src/#cli",
+          "name": "cli",
+          "paths": [
+            "src/cli/"
+          ]
+        }
+      ],
+      "files": [
+        {
+          "path": "src/main.rs",
+          "ref": "src/main.rs",
+          "source": "src/.dirdoc/main.rs.dirdoc_pfd",
+          "stale": null,
+          "summary": "CLIのエントリポイント。引数を解析して各サブコマンドへ委譲する。"
+        }
+      ],
+      "subdirs": [
+        {
+          "path": "src/agent/",
+          "summary": "エージェントの起動・監視・終了を担う。"
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "dirdoc_view": 1,
+      "kind": "directory",
+      "path": "src/agent/",
+      "source": "src/agent/.dirdoc/.dirdoc_dsd",
+      "inherited_from": null,
+      "summary": "エージェントの起動・監視・終了を担う。",
+      "tree": {
+        "name": ".",
+        "type": "dir",
+        "children": [
+          {
+            "name": "pool.rs",
+            "type": "file",
+            "note": "ワーカーのプール",
+            "has_pfd": true
+          },
+          {
+            "name": "runner.rs",
+            "type": "file",
+            "note": "1 体のエージェントの実行ループ"
+          }
+        ]
+      },
+      "dsd": [],
+      "files": [
+        {
+          "path": "src/agent/pool.rs",
+          "ref": "src/agent/pool.rs",
+          "source": "src/agent/.dirdoc/pool.rs.dirdoc_pfd",
+          "stale": null,
+          "summary": "ワーカーのプール。"
+        }
+      ],
+      "subdirs": [],
+      "warnings": []
+    }
+  ]
+}
+--- stderr

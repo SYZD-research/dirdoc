@@ -31,3 +31,6 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# Output of `go build -o dirdoc ./cmd/dirdoc`
+/dirdoc

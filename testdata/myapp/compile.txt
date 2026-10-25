@@ -1,0 +1,6 @@
+# Sources of the myapp fixture, compiled in this order: TARGET SOURCE
+.                   root.toml
+src/agent/pool.rs   agent-pool.toml
+src/agent/          agent.toml
+src/                src.toml
+src/main.rs         main.toml

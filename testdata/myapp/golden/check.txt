@@ -1,0 +1,5 @@
+$ dirdoc check
+exit: 0
+--- stdout
+checked 5 documents: 0 errors, 0 warnings
+--- stderr

@@ -1,0 +1,9 @@
+$ dirdoc search ワーカー
+exit: 0
+--- stdout
+src/main.rs#main  fn main() — プロセスのエントリポイント
+    …]] で出力先を判定してから、[[agent/pool.rs#spawn]] でワーカーを起動する。
+src/agent/pool.rs  tree pool.rs — ワーカーのプール
+src/agent/pool.rs  file — ワーカーのプール。
+src/agent/pool.rs#spawn  fn spawn(n) — ワーカーを n 個起動する
+--- stderr

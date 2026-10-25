@@ -1,0 +1,5 @@
+$ dirdoc docs
+exit: 3
+--- stdout
+--- stderr
+dirdoc: docs/ is not documented (run `dirdoc export docs/` for a template)

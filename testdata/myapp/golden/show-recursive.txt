@@ -1,0 +1,59 @@
+$ dirdoc -r --brief
+exit: 0
+--- stdout
+# ./
+
+> 架空の CLI アプリ myapp。エージェントを並列に動かす。
+
+## Tree
+
+```text
+./
+├── docs/
+├── src/     (dirdoc)  # アプリ本体
+├── target/            # ビルド成果物（記述不要）
+├── Cargo.toml
+└── dirdoc.toml
+```
+
+## Subdirectories
+
+- `src/` — アプリ本体のソースコード。CLI とエージェント実行系からなる。
+
+# src/
+
+> アプリ本体のソースコード。CLI とエージェント実行系からなる。
+
+## Tree
+
+```text
+./           [[src/#src]]
+├── agent/   (dirdoc)      # エージェントの起動と管理
+├── cli/     [[src/#cli]]  # 引数解析とサブコマンド
+└── main.rs  (pfd)         # エントリポイント
+```
+
+## Files
+
+- `src/main.rs` — CLIのエントリポイント。引数を解析して各サブコマンドへ委譲する。
+
+## Subdirectories
+
+- `src/agent/` — エージェントの起動・監視・終了を担う。
+
+# src/agent/
+
+> エージェントの起動・監視・終了を担う。
+
+## Tree
+
+```text
+./
+├── pool.rs    (pfd)  # ワーカーのプール
+└── runner.rs         # 1 体のエージェントの実行ループ
+```
+
+## Files
+
+- `src/agent/pool.rs` — ワーカーのプール。
+--- stderr

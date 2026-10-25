@@ -1,0 +1,24 @@
+summary = "アプリ本体のソースコード。CLI とエージェント実行系からなる。"
+
+tree = '''
+./              [[#src]]
+├── agent/                   # エージェントの起動と管理
+├── cli/        [[#cli]]     # 引数解析とサブコマンド
+└── main.rs                  # エントリポイント
+'''
+
+[[dsd]]
+id = "src"
+name = "ソースルート"
+document = '''
+クレートのルート。`main.rs` が [[cli/]] と [[agent/]] を束ねる。
+
+## 構成
+詳細は各ディレクトリを参照。
+'''
+
+[[dsd]]
+id = "cli"            # name を省略 → Tree 上の名前 "cli" になる
+document = '''
+clap の derive でコマンドを定義する。
+'''

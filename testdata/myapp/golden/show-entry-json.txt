@@ -1,0 +1,25 @@
+$ dirdoc src/main.rs#check_stdout -f json
+exit: 0
+--- stdout
+{
+  "dirdoc_view": 1,
+  "kind": "function",
+  "ref": "src/main.rs#check_stdout",
+  "path": "src/main.rs",
+  "source": "src/.dirdoc/main.rs.dirdoc_pfd",
+  "id": "check_stdout",
+  "name": "check_stdout()",
+  "summary": "標準出力がTTYかを判定する",
+  "document": "TTYなら色付き出力を有効にする。上限値は [[src/main.rs#MAX_AGENTS]] を参照。\n\n## 注意\nWindows では `GetConsoleMode` を使う。",
+  "refs": [
+    {
+      "ref": "src/main.rs#MAX_AGENTS",
+      "resolved": true,
+      "kind": "variable",
+      "name": "MAX_AGENTS",
+      "summary": "同時に処理するエージェント数の上限（既定 8）"
+    }
+  ],
+  "warnings": []
+}
+--- stderr

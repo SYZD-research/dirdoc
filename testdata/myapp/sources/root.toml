@@ -1,0 +1,10 @@
+summary = "架空の CLI アプリ myapp。エージェントを並列に動かす。"
+
+tree = '''
+./
+├── docs/
+├── src/          # アプリ本体
+├── target/       # ビルド成果物（記述不要）
+├── Cargo.toml
+└── dirdoc.toml
+'''

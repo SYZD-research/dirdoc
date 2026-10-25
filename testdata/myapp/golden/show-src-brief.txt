@@ -1,0 +1,24 @@
+$ dirdoc src --brief
+exit: 0
+--- stdout
+# src/
+
+> アプリ本体のソースコード。CLI とエージェント実行系からなる。
+
+## Tree
+
+```text
+./           [[src/#src]]
+├── agent/   (dirdoc)      # エージェントの起動と管理
+├── cli/     [[src/#cli]]  # 引数解析とサブコマンド
+└── main.rs  (pfd)         # エントリポイント
+```
+
+## Files
+
+- `src/main.rs` — CLIのエントリポイント。引数を解析して各サブコマンドへ委譲する。
+
+## Subdirectories
+
+- `src/agent/` — エージェントの起動・監視・終了を担う。
+--- stderr

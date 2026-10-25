@@ -1,0 +1,44 @@
+$ dirdoc src
+exit: 0
+--- stdout
+# src/
+
+> アプリ本体のソースコード。CLI とエージェント実行系からなる。
+
+## Tree
+
+```text
+./           [[src/#src]]
+├── agent/   (dirdoc)      # エージェントの起動と管理
+├── cli/     [[src/#cli]]  # 引数解析とサブコマンド
+└── main.rs  (pfd)         # エントリポイント
+```
+
+## Directories
+
+### ソースルート `src/#src`
+
+クレートのルート。`main.rs` が [[src/cli/]] と [[src/agent/]] を束ねる。
+
+#### 構成
+詳細は各ディレクトリを参照。
+
+### cli `src/#cli`
+
+clap の derive でコマンドを定義する。
+
+## Files
+
+### main.rs `src/main.rs`
+
+> CLIのエントリポイント。引数を解析して各サブコマンドへ委譲する。
+
+- type `Config` `#Config` — コマンドライン引数と設定ファイルから組み立てる実行時設定
+- fn `main()` `#main` — プロセスのエントリポイント
+- fn `check_stdout()` `#check_stdout` — 標準出力がTTYかを判定する
+- var `MAX_AGENTS` `#MAX_AGENTS` — 同時に処理するエージェント数の上限（既定 8）
+
+## Subdirectories
+
+- `src/agent/` — エージェントの起動・監視・終了を担う。
+--- stderr

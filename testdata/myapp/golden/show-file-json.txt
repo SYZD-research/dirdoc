@@ -1,0 +1,79 @@
+$ dirdoc src/main.rs -f json
+exit: 0
+--- stdout
+{
+  "dirdoc_view": 1,
+  "kind": "file",
+  "path": "src/main.rs",
+  "ref": "src/main.rs",
+  "source": "src/.dirdoc/main.rs.dirdoc_pfd",
+  "stale": null,
+  "summary": "CLIのエントリポイント。引数を解析して各サブコマンドへ委譲する。",
+  "overview": {
+    "types": [
+      {
+        "id": "Config",
+        "ref": "src/main.rs#Config",
+        "name": "Config",
+        "summary": "コマンドライン引数と設定ファイルから組み立てる実行時設定"
+      }
+    ],
+    "functions": [
+      {
+        "id": "main",
+        "ref": "src/main.rs#main",
+        "name": "main()",
+        "summary": "プロセスのエントリポイント"
+      },
+      {
+        "id": "check_stdout",
+        "ref": "src/main.rs#check_stdout",
+        "name": "check_stdout()",
+        "summary": "標準出力がTTYかを判定する"
+      }
+    ],
+    "variables": [
+      {
+        "id": "MAX_AGENTS",
+        "ref": "src/main.rs#MAX_AGENTS",
+        "name": "MAX_AGENTS",
+        "summary": "同時に処理するエージェント数の上限（既定 8）"
+      }
+    ]
+  },
+  "types": [
+    {
+      "id": "Config",
+      "ref": "src/main.rs#Config",
+      "name": "Config",
+      "summary": "コマンドライン引数と設定ファイルから組み立てる実行時設定",
+      "document": "[[src/main.rs#main]] で一度だけ作り、各サブコマンドへ参照で渡す。"
+    }
+  ],
+  "functions": [
+    {
+      "id": "main",
+      "ref": "src/main.rs#main",
+      "name": "main()",
+      "summary": "プロセスのエントリポイント",
+      "document": "[[src/main.rs#check_stdout]] で出力先を判定してから、[[src/agent/pool.rs#spawn]] でワーカーを起動する。"
+    },
+    {
+      "id": "check_stdout",
+      "ref": "src/main.rs#check_stdout",
+      "name": "check_stdout()",
+      "summary": "標準出力がTTYかを判定する",
+      "document": "TTYなら色付き出力を有効にする。上限値は [[src/main.rs#MAX_AGENTS]] を参照。\n\n#### 注意\nWindows では `GetConsoleMode` を使う。"
+    }
+  ],
+  "variables": [
+    {
+      "id": "MAX_AGENTS",
+      "ref": "src/main.rs#MAX_AGENTS",
+      "name": "MAX_AGENTS",
+      "summary": "同時に処理するエージェント数の上限（既定 8）"
+    }
+  ],
+  "warnings": []
+}
+--- stderr

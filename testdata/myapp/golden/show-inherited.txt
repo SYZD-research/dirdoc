@@ -1,0 +1,15 @@
+$ dirdoc src/cli
+exit: 0
+--- stdout
+# src/cli/
+
+> 引数解析とサブコマンド
+
+No DSD of its own; described in `src/.dirdoc/.dirdoc_dsd` as [[src/#cli]].
+
+## Directories
+
+### cli `src/#cli`
+
+clap の derive でコマンドを定義する。
+--- stderr
