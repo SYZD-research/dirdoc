@@ -11,10 +11,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"dirdoc/internal/diag"
-	"dirdoc/internal/model"
-	"dirdoc/internal/render"
-	"dirdoc/internal/resolve"
+	"github.com/SYZD-research/dirdoc/internal/diag"
+	"github.com/SYZD-research/dirdoc/internal/model"
+	"github.com/SYZD-research/dirdoc/internal/render"
+	"github.com/SYZD-research/dirdoc/internal/resolve"
 )
 
 func (a *App) checkCmd() *cobra.Command {

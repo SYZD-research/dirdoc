@@ -12,10 +12,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"dirdoc/internal/config"
-	"dirdoc/internal/container"
-	"dirdoc/internal/model"
-	"dirdoc/internal/source"
+	"github.com/SYZD-research/dirdoc/internal/config"
+	"github.com/SYZD-research/dirdoc/internal/container"
+	"github.com/SYZD-research/dirdoc/internal/model"
+	"github.com/SYZD-research/dirdoc/internal/source"
 )
 
 func (a *App) catCmd() *cobra.Command {

@@ -3,7 +3,7 @@ package render
 import (
 	"testing"
 
-	"dirdoc/internal/resolve"
+	"github.com/SYZD-research/dirdoc/internal/resolve"
 )
 
 func TestTransformHeadings(t *testing.T) {

@@ -11,8 +11,8 @@ import (
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
-	"dirdoc/internal/container"
-	"dirdoc/internal/model"
+	"github.com/SYZD-research/dirdoc/internal/container"
+	"github.com/SYZD-research/dirdoc/internal/model"
 )
 
 var update = flag.Bool("update", false, "rewrite the golden files")

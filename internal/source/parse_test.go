@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"dirdoc/internal/diag"
-	"dirdoc/internal/model"
+	"github.com/SYZD-research/dirdoc/internal/diag"
+	"github.com/SYZD-research/dirdoc/internal/model"
 )
 
 const pfdSource = `summary = "CLIのエントリポイント。"

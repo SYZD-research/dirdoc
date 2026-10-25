@@ -12,7 +12,7 @@ import (
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/text"
 
-	"dirdoc/internal/model"
+	"github.com/SYZD-research/dirdoc/internal/model"
 )
 
 // Ref is one [[...]] reference found in Markdown (design §6.2).

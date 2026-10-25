@@ -1,4 +1,4 @@
-module dirdoc
+module github.com/SYZD-research/dirdoc
 
 go 1.27.2
 

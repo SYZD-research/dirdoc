@@ -10,7 +10,7 @@ import (
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/text"
 
-	"dirdoc/internal/resolve"
+	"github.com/SYZD-research/dirdoc/internal/resolve"
 )
 
 type edit struct {

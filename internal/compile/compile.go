@@ -5,9 +5,9 @@ package compile
 import (
 	"strings"
 
-	"dirdoc/internal/diag"
-	"dirdoc/internal/model"
-	"dirdoc/internal/source"
+	"github.com/SYZD-research/dirdoc/internal/diag"
+	"github.com/SYZD-research/dirdoc/internal/model"
+	"github.com/SYZD-research/dirdoc/internal/source"
 )
 
 // Newlines converts CRLF and CR line endings to LF.

@@ -8,10 +8,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"dirdoc/internal/diag"
-	"dirdoc/internal/model"
-	"dirdoc/internal/resolve"
-	"dirdoc/internal/source"
+	"github.com/SYZD-research/dirdoc/internal/diag"
+	"github.com/SYZD-research/dirdoc/internal/model"
+	"github.com/SYZD-research/dirdoc/internal/resolve"
+	"github.com/SYZD-research/dirdoc/internal/source"
 )
 
 // ViewVersion is the version of the JSON view schema (schema/view.v1.schema.json).

@@ -9,10 +9,10 @@ AI エージェント向けに、ディレクトリ（DSD）とファイル（PF
 ## インストール
 
 ```bash
-go install ./cmd/dirdoc
+go install github.com/SYZD-research/dirdoc/cmd/dirdoc@latest
 ```
 
-モジュールパスは仮に `dirdoc` にしています。公開するときは go.mod を `github.com/<owner>/dirdoc` などに変えてください。
+クローンした手元のソースから入れるときは、リポジトリ直下で `go install ./cmd/dirdoc` を実行します。
 
 ## 使い方
 

@@ -10,8 +10,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"dirdoc/internal/model"
-	"dirdoc/internal/resolve"
+	"github.com/SYZD-research/dirdoc/internal/model"
+	"github.com/SYZD-research/dirdoc/internal/resolve"
 )
 
 // Locator maps parts of a document to lines of the source file it is being compiled from.

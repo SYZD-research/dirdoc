@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"dirdoc/internal/model"
-	"dirdoc/internal/source"
+	"github.com/SYZD-research/dirdoc/internal/model"
+	"github.com/SYZD-research/dirdoc/internal/source"
 )
 
 func parse(t *testing.T, src string, kind model.Kind) *source.Doc {

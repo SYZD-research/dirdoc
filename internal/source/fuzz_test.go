@@ -3,7 +3,7 @@ package source
 import (
 	"testing"
 
-	"dirdoc/internal/model"
+	"github.com/SYZD-research/dirdoc/internal/model"
 )
 
 // FuzzParseTree checks that the parser never panics and that every tree it accepts prints back

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"dirdoc/internal/container"
-	"dirdoc/internal/model"
+	"github.com/SYZD-research/dirdoc/internal/container"
+	"github.com/SYZD-research/dirdoc/internal/model"
 )
 
 func TestFindRefs(t *testing.T) {

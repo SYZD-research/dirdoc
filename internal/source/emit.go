@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"dirdoc/internal/model"
+	"github.com/SYZD-research/dirdoc/internal/model"
 )
 
 // EmitDSD prints d as a TOML source. header is written as a comment at the top.

@@ -8,8 +8,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"dirdoc/internal/render"
-	"dirdoc/internal/resolve"
+	"github.com/SYZD-research/dirdoc/internal/render"
+	"github.com/SYZD-research/dirdoc/internal/resolve"
 )
 
 type showOptions struct {

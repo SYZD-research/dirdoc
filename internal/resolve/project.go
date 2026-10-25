@@ -11,10 +11,10 @@ import (
 	"sort"
 	"strings"
 
-	"dirdoc/internal/config"
-	"dirdoc/internal/container"
-	"dirdoc/internal/model"
-	"dirdoc/internal/walk"
+	"github.com/SYZD-research/dirdoc/internal/config"
+	"github.com/SYZD-research/dirdoc/internal/container"
+	"github.com/SYZD-research/dirdoc/internal/model"
+	"github.com/SYZD-research/dirdoc/internal/walk"
 )
 
 // Project is the context of one command: the root, the settings, and a cache of loaded documents.

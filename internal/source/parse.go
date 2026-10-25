@@ -10,8 +10,8 @@ import (
 
 	"github.com/pelletier/go-toml/v2"
 
-	"dirdoc/internal/diag"
-	"dirdoc/internal/model"
+	"github.com/SYZD-research/dirdoc/internal/diag"
+	"github.com/SYZD-research/dirdoc/internal/model"
 )
 
 // Doc is a parsed source file. Pointer fields are nil when the key was absent, which --merge relies on.

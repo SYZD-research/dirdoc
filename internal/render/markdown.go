@@ -6,8 +6,8 @@ import (
 	"path"
 	"strings"
 
-	"dirdoc/internal/diag"
-	"dirdoc/internal/model"
+	"github.com/SYZD-research/dirdoc/internal/diag"
+	"github.com/SYZD-research/dirdoc/internal/model"
 )
 
 // JSON encodes a view as indented JSON without HTML escaping.

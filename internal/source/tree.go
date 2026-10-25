@@ -8,7 +8,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"dirdoc/internal/model"
+	"github.com/SYZD-research/dirdoc/internal/model"
 )
 
 // TreeIssue is a problem found while parsing the tree notation. Line is 1-based within the tree text.

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"dirdoc/internal/model"
+	"github.com/SYZD-research/dirdoc/internal/model"
 )
 
 // outline flattens a tree for comparison: one "path type [link] (note) +more" per node.

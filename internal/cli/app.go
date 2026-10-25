@@ -11,8 +11,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"dirdoc/internal/diag"
-	"dirdoc/internal/resolve"
+	"github.com/SYZD-research/dirdoc/internal/diag"
+	"github.com/SYZD-research/dirdoc/internal/resolve"
 )
 
 // Version is the dirdoc version.

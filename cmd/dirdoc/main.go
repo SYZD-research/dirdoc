@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"dirdoc/internal/cli"
+	"github.com/SYZD-research/dirdoc/internal/cli"
 )
 
 func main() {
