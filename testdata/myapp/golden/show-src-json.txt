@@ -60,7 +60,7 @@ exit: 0
       "path": "src/main.rs",
       "ref": "src/main.rs",
       "source": "src/.dirdoc/main.rs.dirdoc_pfd",
-      "stale": null,
+      "stale": false,
       "summary": "CLIのエントリポイント。引数を解析して各サブコマンドへ委譲する。",
       "overview": {
         "types": [

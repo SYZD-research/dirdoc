@@ -94,6 +94,12 @@ func Parse(data []byte, file string, kind model.Kind) (*Doc, diag.List) {
 		}
 	} else {
 		if err := toml.Unmarshal(data, &m); err != nil {
+			if line := conflictMarker(data); line > 0 {
+				d := l.Errorf(diag.CodeParse, "", "unresolved merge conflict: keep one side of the block and delete the %s, %s and %s lines",
+					MarkerOurs, MarkerSep, MarkerTheirs)
+				d.File, d.Line = file, line
+				return nil, l
+			}
 			d := l.Errorf(diag.CodeParse, "", "invalid TOML: %v", err)
 			d.File = file
 			var de *toml.DecodeError
@@ -117,6 +123,16 @@ func Parse(data []byte, file string, kind model.Kind) (*Doc, diag.List) {
 	}
 	p.top(m)
 	return p.doc, l
+}
+
+// conflictMarker returns the line of the first git conflict marker in data, or 0.
+func conflictMarker(data []byte) int {
+	for i, line := range strings.Split(string(data), "\n") {
+		if strings.HasPrefix(line, "<<<<<<< ") || strings.HasPrefix(line, ">>>>>>> ") {
+			return i + 1
+		}
+	}
+	return 0
 }
 
 type parser struct {

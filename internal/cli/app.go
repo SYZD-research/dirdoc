@@ -16,7 +16,7 @@ import (
 )
 
 // Version is the dirdoc version.
-const Version = "0.1.0"
+const Version = "0.2.0"
 
 // Exit codes (design §14).
 const (
@@ -106,6 +106,8 @@ and prints it as Markdown or JSON.
   dirdoc export TARGET   print the editable TOML source (a template when there is none)
   dirdoc compile TARGET SOURCE|-
                          validate a source and store it
+  dirdoc status          list what is documented, stale or undocumented
+  dirdoc touch FILE      mark a changed file's documentation as still accurate
 
 Run 'dirdoc guide' for the workflow to put in AGENTS.md or CLAUDE.md.`,
 		Args:          usageArgs(cobra.MaximumNArgs(1)),
@@ -131,7 +133,8 @@ Run 'dirdoc guide' for the workflow to put in AGENTS.md or CLAUDE.md.`,
 	}
 	showOpts.register(show)
 
-	root.AddCommand(show, a.compileCmd(), a.exportCmd(), a.checkCmd(), a.searchCmd(), a.catCmd(), a.initCmd(), a.guideCmd())
+	root.AddCommand(show, a.compileCmd(), a.exportCmd(), a.editCmd(), a.checkCmd(), a.searchCmd(), a.statusCmd(),
+		a.touchCmd(), a.rmCmd(), a.mvCmd(), a.catCmd(), a.initCmd(), a.guideCmd(), a.mergeDriverCmd(), a.mcpCmd())
 	return root
 }
 

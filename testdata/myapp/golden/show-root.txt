@@ -12,6 +12,7 @@ exit: 0
 ├── docs/
 ├── src/     (dirdoc)  # アプリ本体
 ├── target/            # ビルド成果物（記述不要）
+├── tools/   (dirdoc)  # リリース用のスクリプト
 ├── Cargo.toml
 └── dirdoc.toml
 ```
@@ -19,4 +20,5 @@ exit: 0
 ## Subdirectories
 
 - `src/` — アプリ本体のソースコード。CLI とエージェント実行系からなる。
+- `tools/`
 --- stderr

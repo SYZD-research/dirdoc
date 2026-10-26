@@ -3,6 +3,7 @@ package render
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"path"
 	"strings"
 
@@ -103,10 +104,68 @@ func overviewLines(ov *OverviewView) []string {
 			items = ov.Variables
 		}
 		for _, it := range items {
-			out = append(out, kindLabels[sec]+" "+code(it.Name)+" "+code("#"+it.ID)+dash(it.Summary))
+			out = append(out, kindLabels[sec]+" "+code(it.Name)+" "+code("#"+it.ID)+lineMark(it.Line)+dash(it.Summary))
 		}
 	}
 	return out
+}
+
+// lineMark is the " L42" printed after an entry whose line in the code is known.
+func lineMark(line int) string {
+	if line > 0 {
+		return fmt.Sprintf(" L%d", line)
+	}
+	return ""
+}
+
+func staleMark(stale *bool) string {
+	if stale != nil && *stale {
+		return " (stale)"
+	}
+	return ""
+}
+
+// staleNotice is the line a file or entry view starts with when the file changed after its PFD was
+// compiled (design §10.5).
+func (b *md) staleNotice(stale *bool, path string) {
+	if stale != nil && *stale {
+		b.quote("stale: " + path + " has changed since this document was last compiled")
+	}
+}
+
+func (b *md) undocumented(syms *[]model.Symbol) {
+	if syms == nil || len(*syms) == 0 {
+		return
+	}
+	b.h(2, "Undocumented")
+	var items []string
+	for _, s := range *syms {
+		items = append(items, kindLabels[s.Kind]+" "+code(s.ID)+lineMark(s.Line)+" — "+code(s.Signature))
+	}
+	b.list(items)
+}
+
+func (b *md) backlinks(refs []BacklinkView) {
+	if len(refs) == 0 {
+		return
+	}
+	b.h(2, "Referenced by")
+	var items []string
+	for _, bv := range refs {
+		item := "[[" + bv.Ref + "]]"
+		if bv.Target != "" {
+			if i := strings.LastIndex(bv.Target, "#"); i >= 0 {
+				item += " → " + code(bv.Target[i:])
+			}
+		} else {
+			item += " — " + kindLabels[bv.Kind] + " " + bv.Name
+			if bv.Summary != "" {
+				item += ": " + oneLine(bv.Summary)
+			}
+		}
+		items = append(items, item)
+	}
+	b.list(items)
 }
 
 func (b *md) warnings(l diag.List) {
@@ -167,7 +226,7 @@ func (r *Renderer) dir(b *md, v *DirView) {
 		if r.Level == Brief {
 			var items []string
 			for _, f := range v.Files {
-				items = append(items, code(f.Path)+dash(firstLine(f.Summary)))
+				items = append(items, code(f.Path)+staleMark(f.Stale)+dash(firstLine(f.Summary)))
 			}
 			b.list(items)
 		}
@@ -175,7 +234,7 @@ func (r *Renderer) dir(b *md, v *DirView) {
 			if r.Level == Brief {
 				break
 			}
-			b.h(3, path.Base(f.Path)+" "+code(f.Ref))
+			b.h(3, path.Base(f.Path)+" "+code(f.Ref)+staleMark(f.Stale))
 			b.quote(f.Summary)
 			if f.Overview != nil {
 				b.list(overviewLines(f.Overview))
@@ -192,6 +251,9 @@ func (r *Renderer) dir(b *md, v *DirView) {
 						continue
 					}
 					b.h(4, sec.kind+" "+e.Name+" "+code("#"+e.ID))
+					if e.Signature != "" {
+						b.add(code(e.Signature))
+					}
 					b.add(e.Document)
 				}
 			}
@@ -212,10 +274,14 @@ func (r *Renderer) dir(b *md, v *DirView) {
 func (r *Renderer) FileMarkdown(v *FileView) string {
 	var b md
 	b.h(1, v.Path)
+	b.staleNotice(v.Stale, v.Path)
 	b.quote(v.Summary)
 	if lines := overviewLines(&v.Overview); len(lines) > 0 {
 		b.h(2, "Overview")
 		b.list(lines)
+	}
+	if r.Level >= Normal {
+		b.undocumented(v.Overview.Undocumented)
 	}
 	for _, sec := range []struct {
 		title, kind string
@@ -228,6 +294,9 @@ func (r *Renderer) FileMarkdown(v *FileView) string {
 		for _, e := range *sec.entries {
 			b.h(3, e.Name+" "+code("#"+e.ID))
 			b.quote(e.Summary)
+			if e.Signature != "" {
+				b.add(code(e.Signature))
+			}
 			b.add(e.Document)
 		}
 	}
@@ -235,9 +304,16 @@ func (r *Renderer) FileMarkdown(v *FileView) string {
 		b.h(2, "Variables")
 		var items []string
 		for _, e := range *v.Variables {
-			items = append(items, code(e.Name)+" "+code("#"+e.ID)+dash(e.Summary))
+			item := code(e.Name) + " " + code("#"+e.ID) + dash(e.Summary)
+			if e.Signature != "" {
+				item += " (" + code(e.Signature) + ")"
+			}
+			items = append(items, item)
 		}
 		b.list(items)
+	}
+	if v.ReferencedBy != nil {
+		b.backlinks(*v.ReferencedBy)
 	}
 	b.warnings(v.Warnings)
 	return b.String()
@@ -247,7 +323,12 @@ func (r *Renderer) FileMarkdown(v *FileView) string {
 func (r *Renderer) EntryMarkdown(v *EntryView) string {
 	var b md
 	b.h(1, kindLabels[v.Kind]+" "+v.Name+" "+code(v.Ref))
+	b.staleNotice(v.Stale, v.Path)
 	b.quote(v.Summary)
+	if v.Line > 0 {
+		b.add(fmt.Sprintf("Defined at %s:", code(fmt.Sprintf("%s:%d", v.Path, v.Line))))
+		b.fence(v.language, v.Signature)
+	}
 	if len(v.Paths) > 0 {
 		var paths []string
 		for _, p := range v.Paths {
@@ -273,6 +354,7 @@ func (r *Renderer) EntryMarkdown(v *EntryView) string {
 		}
 		b.list(items)
 	}
+	b.backlinks(v.ReferencedBy)
 	b.warnings(v.Warnings)
 	return b.String()
 }

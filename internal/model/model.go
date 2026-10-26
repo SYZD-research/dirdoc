@@ -2,7 +2,11 @@
 package model
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"sort"
 	"strings"
 )
 
@@ -172,6 +176,15 @@ func (d *DSD) Paths(id string) []string {
 	return out
 }
 
+// Texts calls fn with every Markdown text of d that may hold references: the summary (id "") and
+// the document of each entry.
+func (d *DSD) Texts(fn func(id string, text *string)) {
+	fn("", &d.Summary)
+	for i := range d.Entries {
+		fn(d.Entries[i].ID, &d.Entries[i].Document)
+	}
+}
+
 // DisplayName returns the name shown for entry id: its own name, else the name of the tree node
 // that links to it (dirName for the root), else the id itself.
 func (d *DSD) DisplayName(id, dirName string) string {
@@ -208,18 +221,31 @@ type Entry struct {
 	Extra    Extra
 }
 
-// OverviewItem is one line of the generated table of contents.
+// OverviewItem is one line of the generated table of contents. Line and Signature come from code
+// analysis and are empty when the file was not analyzed or has no symbol with the item's id.
 type OverviewItem struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Summary string `json:"summary"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Summary   string `json:"summary"`
+	Line      int    `json:"line,omitempty"`
+	Signature string `json:"signature,omitempty"`
 }
 
-// Overview is the table of contents compile generates for a PFD.
+// Symbol is a top-level declaration found by code analysis.
+type Symbol struct {
+	ID        string `json:"id"`
+	Kind      string `json:"kind"` // type, function or variable
+	Line      int    `json:"line"`
+	Signature string `json:"signature"`
+}
+
+// Overview is the table of contents compile generates for a PFD. Undocumented lists the symbols of
+// the file that no entry documents; it is nil when the file was not analyzed.
 type Overview struct {
-	Types     []OverviewItem `json:"types"`
-	Functions []OverviewItem `json:"functions"`
-	Variables []OverviewItem `json:"variables"`
+	Types        []OverviewItem
+	Functions    []OverviewItem
+	Variables    []OverviewItem
+	Undocumented []Symbol
 }
 
 // Section returns the overview items of a PFD section.
@@ -277,6 +303,20 @@ func (p *PFD) SetSection(name string, entries []Entry) {
 	}
 }
 
+// Texts calls fn with every Markdown text of p that may hold references: the summary (id "") and
+// the summary and document of each entry. The overview copies the summaries; rebuild it after
+// changing them.
+func (p *PFD) Texts(fn func(id string, text *string)) {
+	fn("", &p.Summary)
+	for _, sec := range PFDSections {
+		entries := p.Section(sec)
+		for i := range entries {
+			fn(entries[i].ID, &entries[i].Summary)
+			fn(entries[i].ID, &entries[i].Document)
+		}
+	}
+}
+
 // Find returns the section and entry with the given id, or ("", nil).
 func (p *PFD) Find(id string) (string, *Entry) {
 	for _, sec := range PFDSections {
@@ -300,4 +340,71 @@ func BuildOverview(p *PFD) Overview {
 		return out
 	}
 	return Overview{Types: items(p.Types), Functions: items(p.Functions), Variables: items(p.Variables)}
+}
+
+// AnnotateOverview adds code analysis to ov: the line and signature of every item whose id names a
+// symbol, and the symbols no item names, in line order. A nil syms (not analyzed) changes nothing.
+func AnnotateOverview(ov *Overview, syms []Symbol) {
+	if syms == nil {
+		return
+	}
+	byID := map[string]Symbol{}
+	for _, s := range syms {
+		if _, dup := byID[s.ID]; !dup {
+			byID[s.ID] = s
+		}
+	}
+	named := map[string]bool{}
+	for _, items := range [][]OverviewItem{ov.Types, ov.Functions, ov.Variables} {
+		for i := range items {
+			if s, ok := byID[items[i].ID]; ok {
+				items[i].Line, items[i].Signature = s.Line, s.Signature
+				named[s.ID] = true
+			}
+		}
+	}
+	undoc := []Symbol{}
+	for _, s := range syms {
+		if !named[s.ID] {
+			undoc = append(undoc, s)
+		}
+	}
+	sort.SliceStable(undoc, func(i, j int) bool { return undoc[i].Line < undoc[j].Line })
+	ov.Undocumented = undoc
+}
+
+// OverviewSymbols returns the code analysis an overview holds, or nil when the file was not analyzed.
+// A documented symbol takes the kind of the section its entry is in.
+func OverviewSymbols(ov Overview) []Symbol {
+	if ov.Undocumented == nil {
+		return nil
+	}
+	syms := append([]Symbol{}, ov.Undocumented...)
+	for _, sec := range PFDSections {
+		for _, it := range ov.Section(sec) {
+			if it.Line > 0 {
+				syms = append(syms, Symbol{ID: it.ID, Kind: SectionKind(sec), Line: it.Line, Signature: it.Signature})
+			}
+		}
+	}
+	return syms
+}
+
+// Reindex rebuilds p's overview from its entries and keeps the code analysis it held. It serves
+// changes made without the documented file at hand (dirdoc rm, the merge driver).
+func Reindex(p *PFD) {
+	syms := OverviewSymbols(p.Overview)
+	p.Overview = BuildOverview(p)
+	AnnotateOverview(&p.Overview, syms)
+}
+
+// Hash returns the target_hash of a documented file: "sha256:" and the hex digest of its content with
+// CRLF and CR line endings converted to LF, so that checkouts with other line endings match.
+func Hash(content []byte) string {
+	if bytes.IndexByte(content, '\r') >= 0 {
+		content = bytes.ReplaceAll(content, []byte("\r\n"), []byte("\n"))
+		content = bytes.ReplaceAll(content, []byte("\r"), []byte("\n"))
+	}
+	sum := sha256.Sum256(content)
+	return "sha256:" + hex.EncodeToString(sum[:])
 }

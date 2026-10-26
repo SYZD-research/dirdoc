@@ -28,11 +28,18 @@ func TestLoad(t *testing.T) {
 	if cfg, err := Load(write(t, Template)); err != nil || cfg.Storage.Level != "best" {
 		t.Fatalf("template: %+v %v", cfg, err)
 	}
+	cfg, err = Load(write(t, "[template]\nfunction = [\"## Errors \", \"Example\"]\n"))
+	if err != nil || strings.Join(cfg.Template.Headings("function"), "|") != "Errors|Example" || cfg.Template.Headings("dsd-entry") != nil {
+		t.Fatalf("[template]: %+v %v", cfg.Template, err)
+	}
 	for _, bad := range []string{
 		"[storage]\ncompresion = \"none\"\n",
 		"[storage]\ncompression = \"gzip\"\n",
 		"[show]\nformat = \"html\"\n",
 		"[lint]\nsummary_max = { dsd = -1 }\n",
+		"[template]\nfunction = [\"\"]\n",
+		"[template]\ntype = [\"##\"]\n",
+		"[template]\nfile = [\"Usage\"]\n",
 	} {
 		if _, err := Load(write(t, bad)); err == nil || !strings.Contains(err.Error(), FileName) {
 			t.Errorf("%q: error %v", bad, err)

@@ -1,0 +1,65 @@
+$ dirdoc status src -f json
+exit: 0
+--- stdout
+{
+  "dirdoc_view": 1,
+  "kind": "status",
+  "path": "src/",
+  "items": [
+    {
+      "path": "src/",
+      "type": "dir",
+      "state": "dsd"
+    },
+    {
+      "path": "src/main.rs",
+      "type": "file",
+      "state": "pfd"
+    },
+    {
+      "path": "src/agent/",
+      "type": "dir",
+      "state": "dsd"
+    },
+    {
+      "path": "src/agent/pool.rs",
+      "type": "file",
+      "state": "pfd"
+    },
+    {
+      "path": "src/agent/runner.rs",
+      "type": "file",
+      "state": "note"
+    },
+    {
+      "path": "src/cli/",
+      "type": "dir",
+      "state": "inherited"
+    },
+    {
+      "path": "src/cli/args.rs",
+      "type": "file",
+      "state": "none"
+    },
+    {
+      "path": "src/cli/commands.rs",
+      "type": "file",
+      "state": "none"
+    }
+  ],
+  "counts": {
+    "directories": {
+      "dsd": 2,
+      "inherited": 1,
+      "none": 0
+    },
+    "files": {
+      "none": 2,
+      "note": 1,
+      "orphan": 0,
+      "pfd": 2,
+      "stale": 0
+    }
+  }
+}
+--- stderr

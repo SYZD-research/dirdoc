@@ -7,6 +7,8 @@ This repository describes its directories and files with dirdoc. The description
 - `dirdoc <dir>` shows a directory's summary, tree and the table of contents of each file; `dirdoc <file>` shows a file in detail; `dirdoc '<file>#<id>'` shows one type or function. Add `--brief` for less, `--full` for every document, `-f json` for JSON.
 - `[[…]]` is a reference. Pass what is inside to `dirdoc '…'` to open it.
 - Search with `dirdoc search <words>`. The files in `.dirdoc/` are compressed, so grep cannot search them.
+- A view that starts with `> stale:` describes an older version of the file: check the code before relying on it.
+- `dirdoc status` lists which directories and files are documented, stale or undocumented.
 - Never read or write the files in `.dirdoc/` directly.
 
 ### Writing
@@ -24,6 +26,8 @@ When you change code, update its description too.
   ```
 
 - To rewrite a document: `dirdoc export <target> > /tmp/x.toml`, edit it, then `dirdoc compile <target> /tmp/x.toml`. When there is no description yet, export prints a template.
+- When you changed a file whose description is still accurate, run `dirdoc touch <file>` so it is no longer shown as stale.
+- Rename or move documented files with `dirdoc mv <old> <new>`: the description moves along and references are rewritten. Remove descriptions with `dirdoc rm <path>` or `dirdoc rm '<file>#<id>'`.
 - Finish with `dirdoc check`.
 
 ### The source format (TOML)

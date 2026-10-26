@@ -115,3 +115,53 @@ func TestDecodeErrors(t *testing.T) {
 		t.Error("null child: no error")
 	}
 }
+
+func TestHash(t *testing.T) {
+	lf := Hash([]byte("a\nb\n"))
+	if lf != Hash([]byte("a\r\nb\r\n")) || lf != Hash([]byte("a\rb\r")) {
+		t.Error("line endings change the hash")
+	}
+	if lf == Hash([]byte("a\nb")) || !strings.HasPrefix(lf, "sha256:") || len(lf) != len("sha256:")+64 {
+		t.Errorf("Hash = %q", lf)
+	}
+}
+
+func TestOverviewAnalysis(t *testing.T) {
+	p := &PFD{Target: "a.go", Functions: []Entry{{ID: "f", Name: "f()", Summary: "s"}}, Variables: []Entry{{ID: "V", Name: "V", Summary: "v"}}}
+	p.Overview = BuildOverview(p)
+	b, _ := Marshal(p)
+	if strings.Contains(string(b), "undocumented") {
+		t.Errorf("a file that was not analyzed has an undocumented list: %s", b)
+	}
+	AnnotateOverview(&p.Overview, []Symbol{
+		{ID: "g", Kind: "function", Line: 9, Signature: "func g()"},
+		{ID: "f", Kind: "function", Line: 3, Signature: "func f()"},
+		{ID: "T", Kind: "type", Line: 1, Signature: "type T int"},
+	})
+	if it := p.Overview.Functions[0]; it.Line != 3 || it.Signature != "func f()" {
+		t.Errorf("annotated item = %+v", it)
+	}
+	if u := p.Overview.Undocumented; len(u) != 2 || u[0].ID != "T" || u[1].ID != "g" {
+		t.Errorf("undocumented = %+v", u)
+	}
+
+	// Removing f's entry moves its symbol to the undocumented list, as dirdoc rm does.
+	p.Functions = nil
+	Reindex(p)
+	if u := p.Overview.Undocumented; len(u) != 3 || u[1].ID != "f" || u[1].Line != 3 {
+		t.Errorf("after Reindex: %+v", u)
+	}
+
+	// An analyzed file without undocumented symbols keeps an empty list, apart from "not analyzed".
+	q := &PFD{Target: "b.go"}
+	q.Overview = BuildOverview(q)
+	AnnotateOverview(&q.Overview, []Symbol{})
+	b, _ = Marshal(q)
+	if !strings.Contains(string(b), `"undocumented":[]`) {
+		t.Errorf("empty list lost: %s", b)
+	}
+	_, _, back, err := Decode(b)
+	if err != nil || back.Overview.Undocumented == nil {
+		t.Errorf("decoded %+v %v", back, err)
+	}
+}

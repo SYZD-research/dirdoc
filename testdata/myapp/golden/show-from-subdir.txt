@@ -10,4 +10,8 @@ n は [[../main.rs#MAX_AGENTS]] を超えられない。
 ## References
 
 - [[../main.rs#MAX_AGENTS]] — var MAX_AGENTS: 同時に処理するエージェント数の上限（既定 8）
+
+## Referenced by
+
+- [[../main.rs#main]] — fn main(): プロセスのエントリポイント
 --- stderr

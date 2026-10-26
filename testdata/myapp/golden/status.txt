@@ -1,0 +1,21 @@
+$ dirdoc status
+exit: 0
+--- stdout
+dsd        ./
+none       .gitignore
+none       Cargo.toml
+none       dirdoc.toml
+none       docs/
+none       docs/notes.md
+dsd        src/
+pfd        src/main.rs
+dsd        src/agent/
+pfd        src/agent/pool.rs
+note       src/agent/runner.rs
+inherited  src/cli/
+none       src/cli/args.rs
+none       src/cli/commands.rs
+inherited  tools/
+pfd        tools/release.go
+directories: 3 dsd, 2 inherited, 1 none; files: 3 pfd, 0 stale, 0 orphan, 1 note, 6 none
+--- stderr

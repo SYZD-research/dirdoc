@@ -5,6 +5,7 @@ tree = '''
 ├── docs/
 ├── src/          # アプリ本体
 ├── target/       # ビルド成果物（記述不要）
+├── tools/        # リリース用のスクリプト
 ├── Cargo.toml
 └── dirdoc.toml
 '''

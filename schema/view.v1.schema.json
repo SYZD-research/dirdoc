@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:dirdoc:schema:view:v1",
   "title": "dirdoc JSON output, version 1",
-  "description": "Output of `dirdoc -f json`, `dirdoc check -f json` and `dirdoc search -f json`. Paths and refs are relative to the directory dirdoc ran in; refs can be passed back to `dirdoc`.",
+  "description": "Output of `dirdoc -f json`, `dirdoc check -f json`, `dirdoc search -f json` and `dirdoc status -f json`. Paths and refs are relative to the directory dirdoc ran in; refs can be passed back to `dirdoc`.",
   "type": "object",
   "required": ["dirdoc_view", "kind"],
   "properties": { "dirdoc_view": { "const": 1 } },
@@ -12,7 +12,8 @@
     { "$ref": "#/$defs/entry" },
     { "$ref": "#/$defs/list" },
     { "$ref": "#/$defs/check" },
-    { "$ref": "#/$defs/search" }
+    { "$ref": "#/$defs/search" },
+    { "$ref": "#/$defs/status" }
   ],
   "$defs": {
     "diagnostic": {
@@ -57,6 +58,8 @@
       },
       "additionalProperties": false
     },
+    "line": { "type": "integer", "minimum": 1, "description": "Line of the symbol in the file, from code analysis (Go files)." },
+    "signature": { "type": "string", "description": "Declaration of the symbol on one line, from code analysis." },
     "overviewItem": {
       "type": "object",
       "required": ["id", "ref", "name", "summary"],
@@ -64,7 +67,20 @@
         "id": { "type": "string" },
         "ref": { "type": "string" },
         "name": { "type": "string" },
-        "summary": { "type": "string" }
+        "summary": { "type": "string" },
+        "line": { "$ref": "#/$defs/line" },
+        "signature": { "$ref": "#/$defs/signature" }
+      },
+      "additionalProperties": false
+    },
+    "symbol": {
+      "type": "object",
+      "required": ["id", "kind", "line", "signature"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "enum": ["type", "function", "variable"] },
+        "line": { "$ref": "#/$defs/line" },
+        "signature": { "$ref": "#/$defs/signature" }
       },
       "additionalProperties": false
     },
@@ -74,7 +90,12 @@
       "properties": {
         "types": { "type": "array", "items": { "$ref": "#/$defs/overviewItem" } },
         "functions": { "type": "array", "items": { "$ref": "#/$defs/overviewItem" } },
-        "variables": { "type": "array", "items": { "$ref": "#/$defs/overviewItem" } }
+        "variables": { "type": "array", "items": { "$ref": "#/$defs/overviewItem" } },
+        "undocumented": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/symbol" },
+          "description": "Symbols of the file that no entry documents; absent when the file was not analyzed."
+        }
       },
       "additionalProperties": false
     },
@@ -86,14 +107,32 @@
         "ref": { "type": "string" },
         "name": { "type": "string" },
         "summary": { "type": "string" },
+        "line": { "$ref": "#/$defs/line" },
+        "signature": { "$ref": "#/$defs/signature" },
         "document": { "type": "string" }
       },
       "additionalProperties": false
     },
+    "backlinks": {
+      "type": "array",
+      "description": "Places in the documentation that refer to the viewed target.",
+      "items": {
+        "type": "object",
+        "required": ["ref", "kind", "name"],
+        "properties": {
+          "ref": { "type": "string", "description": "The referring document or entry." },
+          "kind": { "enum": ["directory", "file", "type", "function", "variable", "dsd-entry"] },
+          "name": { "type": "string" },
+          "summary": { "type": "string" },
+          "target": { "type": "string", "description": "In a file view: the part of the file referred to." }
+        },
+        "additionalProperties": false
+      }
+    },
     "entryBodies": { "type": "array", "items": { "$ref": "#/$defs/entryBody" } },
     "stale": {
       "type": ["boolean", "null"],
-      "description": "Whether the file changed since its PFD was compiled; null when unknown (always null before Phase 2)."
+      "description": "Whether the file changed since its PFD was compiled; null when unknown (the PFD has no target_hash, or the file cannot be read)."
     },
     "fileSummary": {
       "type": "object",
@@ -166,13 +205,14 @@
         "types": { "$ref": "#/$defs/entryBodies" },
         "functions": { "$ref": "#/$defs/entryBodies" },
         "variables": { "$ref": "#/$defs/entryBodies" },
+        "referenced_by": { "$ref": "#/$defs/backlinks" },
         "warnings": { "$ref": "#/$defs/diagnostics" }
       },
       "additionalProperties": false
     },
     "entry": {
       "type": "object",
-      "required": ["dirdoc_view", "kind", "ref", "path", "source", "id", "name", "refs", "warnings"],
+      "required": ["dirdoc_view", "kind", "ref", "path", "source", "id", "name", "refs", "referenced_by", "warnings"],
       "properties": {
         "dirdoc_view": { "const": 1 },
         "kind": { "enum": ["type", "function", "variable", "dsd-entry"] },
@@ -181,7 +221,10 @@
         "source": { "type": "string" },
         "id": { "type": "string" },
         "name": { "type": "string" },
+        "stale": { "type": "boolean", "description": "Whether the file changed since its PFD was compiled; absent when unknown or for a dsd entry." },
         "summary": { "type": "string" },
+        "line": { "$ref": "#/$defs/line" },
+        "signature": { "$ref": "#/$defs/signature" },
         "document": { "type": "string" },
         "paths": { "type": "array", "items": { "type": "string" } },
         "refs": {
@@ -200,6 +243,7 @@
             "additionalProperties": false
           }
         },
+        "referenced_by": { "$ref": "#/$defs/backlinks" },
         "warnings": { "$ref": "#/$defs/diagnostics" }
       },
       "additionalProperties": false
@@ -250,6 +294,46 @@
             },
             "additionalProperties": false
           }
+        }
+      },
+      "additionalProperties": false
+    },
+    "status": {
+      "type": "object",
+      "required": ["dirdoc_view", "kind", "path", "items", "counts"],
+      "properties": {
+        "dirdoc_view": { "const": 1 },
+        "kind": { "const": "status" },
+        "path": { "type": "string" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "type", "state"],
+            "properties": {
+              "path": { "type": "string" },
+              "type": { "enum": ["dir", "file"] },
+              "state": { "enum": ["dsd", "inherited", "pfd", "stale", "orphan", "note", "none"] }
+            },
+            "additionalProperties": false
+          }
+        },
+        "counts": {
+          "type": "object",
+          "required": ["directories", "files"],
+          "properties": {
+            "directories": {
+              "type": "object",
+              "required": ["dsd", "inherited", "none"],
+              "additionalProperties": { "type": "integer", "minimum": 0 }
+            },
+            "files": {
+              "type": "object",
+              "required": ["pfd", "stale", "orphan", "note", "none"],
+              "additionalProperties": { "type": "integer", "minimum": 0 }
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false

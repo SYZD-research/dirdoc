@@ -7,7 +7,7 @@ exit: 0
   "path": "src/main.rs",
   "ref": "src/main.rs",
   "source": "src/.dirdoc/main.rs.dirdoc_pfd",
-  "stale": null,
+  "stale": false,
   "summary": "CLIのエントリポイント。引数を解析して各サブコマンドへ委譲する。",
   "overview": {
     "types": [
@@ -72,6 +72,15 @@ exit: 0
       "ref": "src/main.rs#MAX_AGENTS",
       "name": "MAX_AGENTS",
       "summary": "同時に処理するエージェント数の上限（既定 8）"
+    }
+  ],
+  "referenced_by": [
+    {
+      "ref": "src/agent/pool.rs#spawn",
+      "kind": "function",
+      "name": "spawn(n)",
+      "summary": "ワーカーを n 個起動する",
+      "target": "src/main.rs#MAX_AGENTS"
     }
   ],
   "warnings": []

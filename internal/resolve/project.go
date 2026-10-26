@@ -3,6 +3,7 @@
 package resolve
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -24,8 +25,9 @@ type Project struct {
 	Config *config.Config
 	Ignore *walk.Ignorer
 
-	dsds map[string]dsdResult
-	pfds map[string]pfdResult
+	dsds   map[string]dsdResult
+	pfds   map[string]pfdResult
+	hashes map[string]string // file → model.Hash of its content, "" when it cannot be read
 }
 
 type dsdResult struct {
@@ -61,6 +63,7 @@ func Open(cwd, target string) (*Project, error) {
 		Ignore: walk.NewIgnorer(root, cfg.Walk.Gitignore, cfg.Walk.Ignore),
 		dsds:   map[string]dsdResult{},
 		pfds:   map[string]pfdResult{},
+		hashes: map[string]string{},
 	}, nil
 }
 
@@ -105,9 +108,21 @@ func InsideDirdoc(abs string) bool {
 	return false
 }
 
+// ErrSource reports a .dirdoc_* file that holds a TOML source instead of a stored document, as the
+// merge driver leaves one it could not merge.
+var ErrSource = errors.New("the file holds a TOML source, not a stored document: resolve the merge " +
+	"conflict in it, then store it with `dirdoc compile TARGET FILE`")
+
 // LoadFile decodes any .dirdoc_* file.
 func LoadFile(path string) (model.Kind, *model.DSD, *model.PFD, error) {
-	js, _, err := container.ReadFile(path)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return 0, nil, nil, &DocError{Path: path, Err: err}
+	}
+	js, _, err := container.Decode(data)
+	if errors.Is(err, container.ErrUnknownFormat) && bytes.HasPrefix(data, []byte("# dirdoc ")) {
+		err = ErrSource
+	}
 	if err != nil {
 		return 0, nil, nil, &DocError{Path: path, Err: err}
 	}
@@ -159,6 +174,66 @@ func (p *Project) SetDSD(dir string, d *model.DSD) { p.dsds[filepath.Clean(dir)]
 
 // SetPFD makes file resolve to d.
 func (p *Project) SetPFD(file string, d *model.PFD) { p.pfds[filepath.Clean(file)] = pfdResult{doc: d} }
+
+// Stale reports whether file changed since pf was compiled (design §10.5). It returns nil when that
+// cannot be told: pf has no target_hash (it was written before Phase 2) or the file cannot be read.
+func (p *Project) Stale(file string, pf *model.PFD) *bool {
+	if pf == nil || pf.TargetHash == "" {
+		return nil
+	}
+	file = filepath.Clean(file)
+	h, ok := p.hashes[file]
+	if !ok {
+		if data, err := os.ReadFile(file); err == nil {
+			h = model.Hash(data)
+		}
+		p.hashes[file] = h
+	}
+	if h == "" {
+		return nil
+	}
+	stale := h != pf.TargetHash
+	return &stale
+}
+
+// Document is a stored document found by Documents. DSD or PFD is set unless Err is.
+type Document struct {
+	Owner Owner
+	DSD   *model.DSD
+	PFD   *model.PFD
+	Err   error
+}
+
+// Texts calls fn with every text of the document that may hold references.
+func (d Document) Texts(fn func(id string, text *string)) {
+	switch {
+	case d.DSD != nil:
+		d.DSD.Texts(fn)
+	case d.PFD != nil:
+		d.PFD.Texts(fn)
+	}
+}
+
+// Documents calls fn for every document below the directory start, as check visits them: each
+// directory's DSD, then its PFDs, directories in sorted pre-order.
+func (p *Project) Documents(start string, fn func(Document)) {
+	p.Ignore.Dirs(start, -1, func(dir string, _ int) error {
+		l, err := List(dir)
+		if err != nil || !l.Exists {
+			return nil
+		}
+		if l.HasDSD {
+			d, err := p.DSD(dir)
+			fn(Document{Owner: DirOwner(dir), DSD: d, Err: err})
+		}
+		for _, name := range l.PFDs {
+			file := filepath.Join(dir, name)
+			pf, err := p.PFD(file)
+			fn(Document{Owner: FileOwner(file), PFD: pf, Err: err})
+		}
+		return nil
+	})
+}
 
 // Listing is the content of a .dirdoc directory.
 type Listing struct {
@@ -282,12 +357,16 @@ func (i *Inherited) Entry() *model.DSDEntry {
 
 // Inherited looks for dir in the trees of its ancestors, nearest first, and returns the first node
 // that links to an entry or carries a note (design §10.3).
-func (p *Project) Inherited(dir string) *Inherited {
-	dir = filepath.Clean(dir)
-	for anc := filepath.Dir(dir); p.Within(anc); anc = filepath.Dir(anc) {
+func (p *Project) Inherited(dir string) *Inherited { return p.Described(dir, true) }
+
+// Described is Inherited for a file or a directory: the nearest ancestor tree node for abs that
+// links to an entry or carries a note, or nil.
+func (p *Project) Described(abs string, isDir bool) *Inherited {
+	abs = filepath.Clean(abs)
+	for anc := filepath.Dir(abs); p.Within(anc); anc = filepath.Dir(anc) {
 		if d, err := p.DSD(anc); err == nil && d != nil && d.Tree != nil {
-			rel := relSlash(anc, dir)
-			if n := d.Tree.Find(rel); n != nil && n.IsDir() && (n.DSD != "" || n.Note != "") {
+			rel := relSlash(anc, abs)
+			if n := d.Tree.Find(rel); n != nil && n.IsDir() == isDir && (n.DSD != "" || n.Note != "") {
 				return &Inherited{Dir: anc, DSD: d, Node: n, Rel: rel}
 			}
 		}

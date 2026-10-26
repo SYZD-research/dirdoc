@@ -1,0 +1,47 @@
+$ dirdoc tools/release.go
+exit: 0
+--- stdout
+# tools/release.go
+
+> リリース用のスクリプト（Go）。対象の OS ごとにアーカイブ名を作る。
+
+## Overview
+
+- type `Target` `#Target` L10 — ビルド対象の OS とアーキテクチャ
+- fn `main()` `#main` L16 — すべての対象をビルドする
+- fn `build(t)` `#build` L22 — アーカイブ名を返す
+- var `Version` `#Version` L7 — リリースするバージョン
+
+## Undocumented
+
+- var `targets` L14 — `var targets = []Target{{"linux", "amd64"}, {"darwin", "arm64"}}`
+- fn `Target.String` L26 — `func (t Target) String() string`
+
+## Types
+
+### Target `#Target`
+
+> ビルド対象の OS とアーキテクチャ
+
+`type Target struct{ ... }`
+
+## Functions
+
+### main() `#main`
+
+> すべての対象をビルドする
+
+`func main()`
+
+### build(t) `#build`
+
+> アーカイブ名を返す
+
+`func build(t Target) string`
+
+名前には [[tools/release.go#Version]] が入る。対象は [[tools/release.go#Target]]。
+
+## Variables
+
+- `Version` `#Version` — リリースするバージョン (`const Version = "1.2.0"`)
+--- stderr

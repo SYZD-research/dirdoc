@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"strings"
 
 	"github.com/pelletier/go-toml/v2"
 )
@@ -16,10 +17,11 @@ const FileName = "dirdoc.toml"
 
 // Config is the content of dirdoc.toml.
 type Config struct {
-	Storage Storage `toml:"storage"`
-	Walk    Walk    `toml:"walk"`
-	Lint    Lint    `toml:"lint"`
-	Show    Show    `toml:"show"`
+	Storage  Storage      `toml:"storage"`
+	Walk     Walk         `toml:"walk"`
+	Lint     Lint         `toml:"lint"`
+	Show     Show         `toml:"show"`
+	Template BodyTemplate `toml:"template"`
 }
 
 type Storage struct {
@@ -45,6 +47,27 @@ type SummaryMax struct {
 
 type Show struct {
 	Format string `toml:"format"`
+}
+
+// BodyTemplate lists the headings the documents of each kind of entry must have (design §17).
+// export puts them in its templates, and compile and check warn about a document without one.
+type BodyTemplate struct {
+	DSD      []string `toml:"dsd"`
+	Type     []string `toml:"type"`
+	Function []string `toml:"function"`
+}
+
+// Headings returns the headings required of documents of kind: dsd-entry, type or function.
+func (t BodyTemplate) Headings(kind string) []string {
+	switch kind {
+	case "dsd-entry", "dsd":
+		return t.DSD
+	case "type":
+		return t.Type
+	case "function":
+		return t.Function
+	}
+	return nil
 }
 
 // Default returns the settings used when dirdoc.toml is absent.
@@ -106,6 +129,18 @@ func (c *Config) validate() error {
 	if m.DSD < 0 || m.PFD < 0 || m.Entry < 0 {
 		return errors.New("lint.summary_max values must not be negative")
 	}
+	for _, t := range []struct {
+		key      string
+		headings []string
+	}{{"dsd", c.Template.DSD}, {"type", c.Template.Type}, {"function", c.Template.Function}} {
+		for i, h := range t.headings {
+			h = strings.TrimSpace(strings.TrimLeft(strings.TrimSpace(h), "#"))
+			if h == "" || strings.ContainsAny(h, "\r\n") {
+				return fmt.Errorf("template.%s[%d] must be the text of a heading, such as \"Errors\"", t.key, i)
+			}
+			t.headings[i] = h
+		}
+	}
 	return nil
 }
 
@@ -125,4 +160,11 @@ summary_max = { dsd = 200, pfd = 400, entry = 120 }   # warn when a summary is l
 
 [show]
 format = "md"          # default output format: "md" | "json"
+
+[template]
+# Headings every document of a kind must have, e.g. function = ["Errors"]. export puts them in its
+# templates; compile and check warn about a document (that is not empty) without one.
+dsd = []
+type = []
+function = []
 `

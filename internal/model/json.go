@@ -290,6 +290,33 @@ func nonNil(items []OverviewItem) []OverviewItem {
 	return items
 }
 
+// MarshalJSON writes undocumented only when the file was analyzed, so that [] (analyzed, all
+// documented) stays apart from nil (not analyzed).
+func (o Overview) MarshalJSON() ([]byte, error) {
+	var w object
+	w.field("types", nonNil(o.Types))
+	w.field("functions", nonNil(o.Functions))
+	w.field("variables", nonNil(o.Variables))
+	if o.Undocumented != nil {
+		w.field("undocumented", o.Undocumented)
+	}
+	return w.bytes()
+}
+
+func (o *Overview) UnmarshalJSON(b []byte) error {
+	f, err := readObject(b)
+	if err != nil {
+		return err
+	}
+	*o = Overview{}
+	return errors.Join(
+		f.take("types", &o.Types),
+		f.take("functions", &o.Functions),
+		f.take("variables", &o.Variables),
+		f.take("undocumented", &o.Undocumented),
+	)
+}
+
 func (p PFD) MarshalJSON() ([]byte, error) { return p.marshal(false) }
 
 // MarshalSource encodes p as a JSON source: the stored structure without the fields compile generates.
@@ -307,11 +334,7 @@ func (p PFD) marshal(source bool) ([]byte, error) {
 		o.field("summary", p.Summary)
 	}
 	if !source {
-		o.field("overview", Overview{
-			Types:     nonNil(p.Overview.Types),
-			Functions: nonNil(p.Overview.Functions),
-			Variables: nonNil(p.Overview.Variables),
-		})
+		o.field("overview", p.Overview)
 	}
 	for _, sec := range PFDSections {
 		if entries := p.Section(sec); len(entries) > 0 {

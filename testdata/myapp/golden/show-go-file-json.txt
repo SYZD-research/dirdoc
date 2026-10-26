@@ -1,0 +1,108 @@
+$ dirdoc tools/release.go -f json
+exit: 0
+--- stdout
+{
+  "dirdoc_view": 1,
+  "kind": "file",
+  "path": "tools/release.go",
+  "ref": "tools/release.go",
+  "source": "tools/.dirdoc/release.go.dirdoc_pfd",
+  "stale": false,
+  "summary": "リリース用のスクリプト（Go）。対象の OS ごとにアーカイブ名を作る。",
+  "overview": {
+    "types": [
+      {
+        "id": "Target",
+        "ref": "tools/release.go#Target",
+        "name": "Target",
+        "summary": "ビルド対象の OS とアーキテクチャ",
+        "line": 10,
+        "signature": "type Target struct{ ... }"
+      }
+    ],
+    "functions": [
+      {
+        "id": "main",
+        "ref": "tools/release.go#main",
+        "name": "main()",
+        "summary": "すべての対象をビルドする",
+        "line": 16,
+        "signature": "func main()"
+      },
+      {
+        "id": "build",
+        "ref": "tools/release.go#build",
+        "name": "build(t)",
+        "summary": "アーカイブ名を返す",
+        "line": 22,
+        "signature": "func build(t Target) string"
+      }
+    ],
+    "variables": [
+      {
+        "id": "Version",
+        "ref": "tools/release.go#Version",
+        "name": "Version",
+        "summary": "リリースするバージョン",
+        "line": 7,
+        "signature": "const Version = \"1.2.0\""
+      }
+    ],
+    "undocumented": [
+      {
+        "id": "targets",
+        "kind": "variable",
+        "line": 14,
+        "signature": "var targets = []Target{{\"linux\", \"amd64\"}, {\"darwin\", \"arm64\"}}"
+      },
+      {
+        "id": "Target.String",
+        "kind": "function",
+        "line": 26,
+        "signature": "func (t Target) String() string"
+      }
+    ]
+  },
+  "types": [
+    {
+      "id": "Target",
+      "ref": "tools/release.go#Target",
+      "name": "Target",
+      "summary": "ビルド対象の OS とアーキテクチャ",
+      "line": 10,
+      "signature": "type Target struct{ ... }"
+    }
+  ],
+  "functions": [
+    {
+      "id": "main",
+      "ref": "tools/release.go#main",
+      "name": "main()",
+      "summary": "すべての対象をビルドする",
+      "line": 16,
+      "signature": "func main()"
+    },
+    {
+      "id": "build",
+      "ref": "tools/release.go#build",
+      "name": "build(t)",
+      "summary": "アーカイブ名を返す",
+      "line": 22,
+      "signature": "func build(t Target) string",
+      "document": "名前には [[tools/release.go#Version]] が入る。対象は [[tools/release.go#Target]]。"
+    }
+  ],
+  "variables": [
+    {
+      "id": "Version",
+      "ref": "tools/release.go#Version",
+      "name": "Version",
+      "summary": "リリースするバージョン",
+      "line": 7,
+      "signature": "const Version = \"1.2.0\""
+    }
+  ],
+  "referenced_by": [],
+  "warnings": []
+}
+--- stderr

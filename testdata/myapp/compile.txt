@@ -4,3 +4,4 @@ src/agent/pool.rs   agent-pool.toml
 src/agent/          agent.toml
 src/                src.toml
 src/main.rs         main.toml
+tools/release.go    tools-release.toml

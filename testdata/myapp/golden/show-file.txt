@@ -40,4 +40,8 @@ Windows では `GetConsoleMode` を使う。
 ## Variables
 
 - `MAX_AGENTS` `#MAX_AGENTS` — 同時に処理するエージェント数の上限（既定 8）
+
+## Referenced by
+
+- [[src/agent/pool.rs#spawn]] → `#MAX_AGENTS`
 --- stderr

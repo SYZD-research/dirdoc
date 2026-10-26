@@ -1,0 +1,27 @@
+$ dirdoc tools/release.go#Version -f json
+exit: 0
+--- stdout
+{
+  "dirdoc_view": 1,
+  "kind": "variable",
+  "ref": "tools/release.go#Version",
+  "path": "tools/release.go",
+  "source": "tools/.dirdoc/release.go.dirdoc_pfd",
+  "id": "Version",
+  "name": "Version",
+  "stale": false,
+  "summary": "リリースするバージョン",
+  "line": 7,
+  "signature": "const Version = \"1.2.0\"",
+  "refs": [],
+  "referenced_by": [
+    {
+      "ref": "tools/release.go#build",
+      "kind": "function",
+      "name": "build(t)",
+      "summary": "アーカイブ名を返す"
+    }
+  ],
+  "warnings": []
+}
+--- stderr

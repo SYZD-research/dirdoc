@@ -1,0 +1,20 @@
+summary = "リリース用のスクリプト（Go）。対象の OS ごとにアーカイブ名を作る。"
+
+[[types]]
+name = "Target"
+summary = "ビルド対象の OS とアーキテクチャ"
+
+[[functions]]
+name = "main()"
+summary = "すべての対象をビルドする"
+
+[[functions]]
+name = "build(t)"
+summary = "アーカイブ名を返す"
+document = '''
+名前には [[#Version]] が入る。対象は [[#Target]]。
+'''
+
+[[variables]]
+name = "Version"
+summary = "リリースするバージョン"
