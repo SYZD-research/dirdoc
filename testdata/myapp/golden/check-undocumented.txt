@@ -1,7 +1,9 @@
 $ dirdoc check --undocumented
 exit: 0
 --- stdout
+warning[undocumented] src/agent/pool.rs: type Worker (line 8) has no entry
+warning[undocumented] src/agent/pool.rs: function Worker::new (line 13) has no entry
 warning[undocumented] tools/release.go: variable targets (line 14) has no entry
 warning[undocumented] tools/release.go: function Target.String (line 26) has no entry
-checked 6 documents: 0 errors, 2 warnings
+checked 6 documents: 0 errors, 4 warnings
 --- stderr

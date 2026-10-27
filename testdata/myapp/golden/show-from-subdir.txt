@@ -5,6 +5,12 @@ exit: 0
 
 > ワーカーを n 個起動する
 
+Defined at `pool.rs:4`:
+
+```rust
+pub fn spawn(n: usize) -> Vec<Worker>
+```
+
 n は [[../main.rs#MAX_AGENTS]] を超えられない。
 
 ## References

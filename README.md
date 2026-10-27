@@ -24,7 +24,7 @@ dirdoc src/                         # ディレクトリの概要・ツリー・
 dirdoc src/main.rs                  # ファイルの詳細
 dirdoc 'src/main.rs#main'           # 1 つの関数
 dirdoc search tty                   # 全文検索（圧縮されているので grep は使えない）
-dirdoc check                        # 検証（CI では --strict。--stale で古い記述、--undocumented で記述の無い Go のシンボルも）
+dirdoc check                        # 検証（CI では --strict。--stale で古い記述、--undocumented で記述の無いシンボルも）
 dirdoc status                       # どのディレクトリ・ファイルに説明があるか（stale・none なども）
 dirdoc touch src/main.rs            # コードは変えたが説明はそのままでよいとき、stale の表示を消す
 dirdoc edit src/main.rs             # $EDITOR で編集して compile（人間向け）
@@ -33,7 +33,7 @@ dirdoc mv src/main.rs src/app.rs    # ファイルを説明ごと移動し、参
 dirdoc guide                        # AGENTS.md / CLAUDE.md に貼るエージェント向けの手順
 ```
 
-Go のファイルはコードも解析し、目次に行番号とシグネチャを付け、説明の無いシンボルを一覧にします。ファイルやエントリの表示には、どこから参照されているか（被参照）も出ます。
+Go・Rust・TypeScript・JavaScript・Java・Kotlin・Python・シェルスクリプトのファイルはコードも解析し、目次に行番号とシグネチャを付け、説明の無いシンボルを一覧にします。メソッドは `Pool.spawn`（Rust では `Pool::spawn`）のような ID で結びつきます。ファイルやエントリの表示には、どこから参照されているか（被参照）も出ます。
 
 一部だけ更新するときは `--merge` を使います。
 
@@ -60,6 +60,7 @@ claude mcp add dirdoc -- dirdoc mcp # MCP クライアントから show / search
 go test ./...
 go test ./internal/cli -update    # 出力を変えたときにゴールデンファイルを更新する
 go test ./internal/source -run '^$' -fuzz FuzzParseTree -fuzztime 60s
+go test ./internal/analyze -run '^$' -fuzz FuzzFile -fuzztime 60s
 ```
 
 このリポジトリ自体も dirdoc で記述しています。`dirdoc`、`dirdoc internal/`、`dirdoc internal/model/id.go` などで読めます。

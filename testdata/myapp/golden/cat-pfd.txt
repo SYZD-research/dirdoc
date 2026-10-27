@@ -2,7 +2,7 @@ $ dirdoc cat src/.dirdoc/main.rs.dirdoc_pfd
 exit: 0
 --- stdout
 # dirdoc pfd: main.rs
-# target_hash: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+# target_hash: sha256:0c167b3694d30c80c29f2f9d31f357dc7249d00d83d675dd1662261309dec33e
 summary = "CLIのエントリポイント。引数を解析して各サブコマンドへ委譲する。"
 
 [[types]]

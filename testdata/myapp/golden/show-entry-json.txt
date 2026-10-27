@@ -11,6 +11,8 @@ exit: 0
   "name": "check_stdout()",
   "stale": false,
   "summary": "標準出力がTTYかを判定する",
+  "line": 19,
+  "signature": "fn check_stdout() -> bool",
   "document": "TTYなら色付き出力を有効にする。上限値は [[src/main.rs#MAX_AGENTS]] を参照。\n\n## 注意\nWindows では `GetConsoleMode` を使う。",
   "refs": [
     {

@@ -5,6 +5,12 @@ exit: 0
 
 > プロセスのエントリポイント
 
+Defined at `src/main.rs:13`:
+
+```rust
+fn main()
+```
+
 [[src/main.rs#check_stdout]] で出力先を判定してから、[[src/agent/pool.rs#spawn]] でワーカーを起動する。
 
 ## References

@@ -79,8 +79,8 @@ func TestGoSymbols(t *testing.T) {
 }
 
 func TestUnsupportedAndBroken(t *testing.T) {
-	if syms := File("main.rs", []byte("fn main() {}")); syms != nil {
-		t.Errorf("Rust: %v", syms)
+	if syms := File("main.c", []byte("int main() {}")); syms != nil {
+		t.Errorf("C: %v", syms)
 	}
 	if syms := File("broken.go", []byte("package x\nfunc (")); syms != nil {
 		t.Errorf("syntax error: %v", syms)
@@ -88,7 +88,39 @@ func TestUnsupportedAndBroken(t *testing.T) {
 	if syms := File("empty.go", []byte("package x\n")); syms == nil || len(syms) != 0 {
 		t.Errorf("no declarations: %#v (want an empty, non-nil list)", syms)
 	}
-	if Language("a.GO") != "go" || Language("a.rs") != "" {
-		t.Error("Language")
+	for name, want := range map[string]string{"a.GO": "go", "a.rs": "rust", "a.tsx": "typescript", "a.mjs": "javascript",
+		"A.java": "java", "a.kts": "kotlin", "a.pyi": "python", "a.sh": "sh", "a.c": "", "Makefile": ""} {
+		if got := Language(name); got != want {
+			t.Errorf("Language(%q) = %q, want %q", name, got, want)
+		}
+	}
+	for src, want := range map[string]string{"#!/bin/sh\nf() { :; }\n": "sh", "#!/usr/bin/env -S python3 -u\ndef f(): pass\n": "python",
+		"#!/usr/bin/env node\nfunction f() {}\n": "javascript", "#!/usr/bin/perl\nsub f {}\n": ""} {
+		for _, name := range []string{"script", "invoke-rc.d"} {
+			syms := File(name, []byte(src))
+			if (syms != nil && len(syms) == 1) != (want != "") {
+				t.Errorf("%s %q: %v (want language %q)", name, src, syms, want)
+			}
+		}
+	}
+	if syms := File("notes.md", []byte("# Notes\n")); syms != nil {
+		t.Errorf("Markdown: %v", syms)
+	}
+}
+
+// symbols analyzes src as the file name and prints each symbol as "kind id line: signature".
+func symbols(name, src string) []string {
+	var out []string
+	for _, s := range File(name, []byte(src)) {
+		out = append(out, s.Kind+" "+s.ID+" "+strconv.Itoa(s.Line)+": "+s.Signature)
+	}
+	return out
+}
+
+func checkSymbols(t *testing.T, name, src string, want []string) {
+	t.Helper()
+	got := symbols(name, src)
+	if strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Errorf("%s symbols:\n%s\nwant:\n%s", name, strings.Join(got, "\n"), strings.Join(want, "\n"))
 	}
 }

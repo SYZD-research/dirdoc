@@ -7,16 +7,18 @@ exit: 0
 
 ## Overview
 
-- type `Config` `#Config` — コマンドライン引数と設定ファイルから組み立てる実行時設定
-- fn `main()` `#main` — プロセスのエントリポイント
-- fn `check_stdout()` `#check_stdout` — 標準出力がTTYかを判定する
-- var `MAX_AGENTS` `#MAX_AGENTS` — 同時に処理するエージェント数の上限（既定 8）
+- type `Config` `#Config` L8 — コマンドライン引数と設定ファイルから組み立てる実行時設定
+- fn `main()` `#main` L13 — プロセスのエントリポイント
+- fn `check_stdout()` `#check_stdout` L19 — 標準出力がTTYかを判定する
+- var `MAX_AGENTS` `#MAX_AGENTS` L5 — 同時に処理するエージェント数の上限（既定 8）
 
 ## Types
 
 ### Config `#Config`
 
 > コマンドライン引数と設定ファイルから組み立てる実行時設定
+
+`pub struct Config { ... }`
 
 [[src/main.rs#main]] で一度だけ作り、各サブコマンドへ参照で渡す。
 
@@ -26,11 +28,15 @@ exit: 0
 
 > プロセスのエントリポイント
 
+`fn main()`
+
 [[src/main.rs#check_stdout]] で出力先を判定してから、[[src/agent/pool.rs#spawn]] でワーカーを起動する。
 
 ### check_stdout() `#check_stdout`
 
 > 標準出力がTTYかを判定する
+
+`fn check_stdout() -> bool`
 
 TTYなら色付き出力を有効にする。上限値は [[src/main.rs#MAX_AGENTS]] を参照。
 
@@ -39,7 +45,7 @@ Windows では `GetConsoleMode` を使う。
 
 ## Variables
 
-- `MAX_AGENTS` `#MAX_AGENTS` — 同時に処理するエージェント数の上限（既定 8）
+- `MAX_AGENTS` `#MAX_AGENTS` — 同時に処理するエージェント数の上限（既定 8） (`pub const MAX_AGENTS: usize = 8`)
 
 ## Referenced by
 

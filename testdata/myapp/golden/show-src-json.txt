@@ -68,7 +68,9 @@ exit: 0
             "id": "Config",
             "ref": "src/main.rs#Config",
             "name": "Config",
-            "summary": "コマンドライン引数と設定ファイルから組み立てる実行時設定"
+            "summary": "コマンドライン引数と設定ファイルから組み立てる実行時設定",
+            "line": 8,
+            "signature": "pub struct Config { ... }"
           }
         ],
         "functions": [
@@ -76,13 +78,17 @@ exit: 0
             "id": "main",
             "ref": "src/main.rs#main",
             "name": "main()",
-            "summary": "プロセスのエントリポイント"
+            "summary": "プロセスのエントリポイント",
+            "line": 13,
+            "signature": "fn main()"
           },
           {
             "id": "check_stdout",
             "ref": "src/main.rs#check_stdout",
             "name": "check_stdout()",
-            "summary": "標準出力がTTYかを判定する"
+            "summary": "標準出力がTTYかを判定する",
+            "line": 19,
+            "signature": "fn check_stdout() -> bool"
           }
         ],
         "variables": [
@@ -90,9 +96,12 @@ exit: 0
             "id": "MAX_AGENTS",
             "ref": "src/main.rs#MAX_AGENTS",
             "name": "MAX_AGENTS",
-            "summary": "同時に処理するエージェント数の上限（既定 8）"
+            "summary": "同時に処理するエージェント数の上限（既定 8）",
+            "line": 5,
+            "signature": "pub const MAX_AGENTS: usize = 8"
           }
-        ]
+        ],
+        "undocumented": []
       }
     }
   ],

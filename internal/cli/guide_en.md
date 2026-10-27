@@ -26,6 +26,7 @@ When you change code, update its description too.
   ```
 
 - To rewrite a document: `dirdoc export <target> > /tmp/x.toml`, edit it, then `dirdoc compile <target> /tmp/x.toml`. When there is no description yet, export prints a template.
+- Name methods `Type.method()` (in Rust `Type::method()`), as code analysis names them. In the languages dirdoc analyzes (Go, Rust, TypeScript, JavaScript, Java, Kotlin, Python, shell), `dirdoc <file>` then shows each entry's line and signature, and lists the symbols without an entry under Undocumented.
 - When you changed a file whose description is still accurate, run `dirdoc touch <file>` so it is no longer shown as stale.
 - Rename or move documented files with `dirdoc mv <old> <new>`: the description moves along and references are rewritten. Remove descriptions with `dirdoc rm <path>` or `dirdoc rm '<file>#<id>'`.
 - Finish with `dirdoc check`.

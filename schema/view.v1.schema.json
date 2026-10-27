@@ -58,7 +58,7 @@
       },
       "additionalProperties": false
     },
-    "line": { "type": "integer", "minimum": 1, "description": "Line of the symbol in the file, from code analysis (Go files)." },
+    "line": { "type": "integer", "minimum": 1, "description": "Line of the symbol in the file, from code analysis." },
     "signature": { "type": "string", "description": "Declaration of the symbol on one line, from code analysis." },
     "overviewItem": {
       "type": "object",
