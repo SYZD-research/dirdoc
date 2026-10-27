@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/SYZD-research/dirdoc/internal/analyze"
 	"github.com/SYZD-research/dirdoc/internal/diag"
 	"github.com/SYZD-research/dirdoc/internal/model"
 	"github.com/SYZD-research/dirdoc/internal/resolve"
@@ -88,28 +89,34 @@ type FileSummary struct {
 	Variables *[]EntryBody  `json:"variables,omitempty"`
 }
 
-// OverviewView is a PFD's table of contents.
+// OverviewView is a PFD's table of contents. Undocumented lists the symbols of the file that no entry
+// documents; it is absent when the file was not analyzed.
 type OverviewView struct {
-	Types     []OverviewItem `json:"types"`
-	Functions []OverviewItem `json:"functions"`
-	Variables []OverviewItem `json:"variables"`
+	Types        []OverviewItem  `json:"types"`
+	Functions    []OverviewItem  `json:"functions"`
+	Variables    []OverviewItem  `json:"variables"`
+	Undocumented *[]model.Symbol `json:"undocumented,omitempty"`
 }
 
-// OverviewItem is one line of a table of contents.
+// OverviewItem is one line of a table of contents. Line and Signature come from code analysis.
 type OverviewItem struct {
-	ID      string `json:"id"`
-	Ref     string `json:"ref"`
-	Name    string `json:"name"`
-	Summary string `json:"summary"`
+	ID        string `json:"id"`
+	Ref       string `json:"ref"`
+	Name      string `json:"name"`
+	Summary   string `json:"summary"`
+	Line      int    `json:"line,omitempty"`
+	Signature string `json:"signature,omitempty"`
 }
 
 // EntryBody is a type, function or variable with its document.
 type EntryBody struct {
-	ID       string `json:"id"`
-	Ref      string `json:"ref"`
-	Name     string `json:"name"`
-	Summary  string `json:"summary"`
-	Document string `json:"document,omitempty"`
+	ID        string `json:"id"`
+	Ref       string `json:"ref"`
+	Name      string `json:"name"`
+	Summary   string `json:"summary"`
+	Line      int    `json:"line,omitempty"`
+	Signature string `json:"signature,omitempty"`
+	Document  string `json:"document,omitempty"`
 }
 
 // SubdirView is a subdirectory that has its own .dirdoc.
@@ -120,34 +127,53 @@ type SubdirView struct {
 
 // FileView is the view of a file.
 type FileView struct {
-	DirdocView int          `json:"dirdoc_view"`
-	Kind       string       `json:"kind"`
-	Path       string       `json:"path"`
-	Ref        string       `json:"ref"`
-	Source     string       `json:"source"`
-	Stale      *bool        `json:"stale"`
-	Summary    string       `json:"summary"`
-	Overview   OverviewView `json:"overview"`
-	Types      *[]EntryBody `json:"types,omitempty"`
-	Functions  *[]EntryBody `json:"functions,omitempty"`
-	Variables  *[]EntryBody `json:"variables,omitempty"`
-	Warnings   diag.List    `json:"warnings"`
+	DirdocView   int             `json:"dirdoc_view"`
+	Kind         string          `json:"kind"`
+	Path         string          `json:"path"`
+	Ref          string          `json:"ref"`
+	Source       string          `json:"source"`
+	Stale        *bool           `json:"stale"`
+	Summary      string          `json:"summary"`
+	Overview     OverviewView    `json:"overview"`
+	Types        *[]EntryBody    `json:"types,omitempty"`
+	Functions    *[]EntryBody    `json:"functions,omitempty"`
+	Variables    *[]EntryBody    `json:"variables,omitempty"`
+	ReferencedBy *[]BacklinkView `json:"referenced_by,omitempty"`
+	Warnings     diag.List       `json:"warnings"`
+
+	language string // the code fence language of signatures
 }
 
 // EntryView is the view of one entry (PATH#ID).
 type EntryView struct {
-	DirdocView int       `json:"dirdoc_view"`
-	Kind       string    `json:"kind"`
-	Ref        string    `json:"ref"`
-	Path       string    `json:"path"`
-	Source     string    `json:"source"`
-	ID         string    `json:"id"`
-	Name       string    `json:"name"`
-	Summary    string    `json:"summary,omitempty"`
-	Document   string    `json:"document,omitempty"`
-	Paths      []string  `json:"paths,omitempty"`
-	Refs       []RefView `json:"refs"`
-	Warnings   diag.List `json:"warnings"`
+	DirdocView   int            `json:"dirdoc_view"`
+	Kind         string         `json:"kind"`
+	Ref          string         `json:"ref"`
+	Path         string         `json:"path"`
+	Source       string         `json:"source"`
+	ID           string         `json:"id"`
+	Name         string         `json:"name"`
+	Stale        *bool          `json:"stale,omitempty"`
+	Summary      string         `json:"summary,omitempty"`
+	Line         int            `json:"line,omitempty"`
+	Signature    string         `json:"signature,omitempty"`
+	Document     string         `json:"document,omitempty"`
+	Paths        []string       `json:"paths,omitempty"`
+	Refs         []RefView      `json:"refs"`
+	ReferencedBy []BacklinkView `json:"referenced_by"`
+	Warnings     diag.List      `json:"warnings"`
+
+	language string
+}
+
+// BacklinkView is a place in the documentation that refers to the viewed target. In a file view,
+// Target is the part of the file it refers to.
+type BacklinkView struct {
+	Ref     string `json:"ref"`
+	Kind    string `json:"kind"`
+	Name    string `json:"name"`
+	Summary string `json:"summary,omitempty"`
+	Target  string `json:"target,omitempty"`
 }
 
 // RefView is a reference made by an entry, with the summary of its target.
@@ -354,26 +380,47 @@ func (r *Renderer) dsdEntry(dir string, d *model.DSD, e model.DSDEntry, top int,
 
 func (r *Renderer) overview(owner resolve.Owner, pf *model.PFD, w *warnings) OverviewView {
 	ov := pf.Overview
-	if ov.Empty() {
+	if ov.Empty() && ov.Undocumented == nil {
 		ov = model.BuildOverview(pf)
 	}
 	items := func(in []model.OverviewItem) []OverviewItem {
 		out := make([]OverviewItem, 0, len(in))
 		for _, it := range in {
 			ref := r.P.EntryRef(owner, it.ID)
-			out = append(out, OverviewItem{ID: it.ID, Ref: ref, Name: it.Name, Summary: r.text(it.Summary, owner, ref, 0, w)})
+			out = append(out, OverviewItem{
+				ID: it.ID, Ref: ref, Name: it.Name, Summary: r.text(it.Summary, owner, ref, 0, w),
+				Line: it.Line, Signature: it.Signature,
+			})
 		}
 		return out
 	}
-	return OverviewView{Types: items(ov.Types), Functions: items(ov.Functions), Variables: items(ov.Variables)}
+	v := OverviewView{Types: items(ov.Types), Functions: items(ov.Functions), Variables: items(ov.Variables)}
+	if ov.Undocumented != nil {
+		undoc := append([]model.Symbol{}, ov.Undocumented...)
+		v.Undocumented = &undoc
+	}
+	return v
+}
+
+// analysis returns the line and signature the overview of pf records for entry id.
+func analysis(pf *model.PFD, id string) (int, string) {
+	for _, sec := range model.PFDSections {
+		for _, it := range pf.Overview.Section(sec) {
+			if it.ID == id {
+				return it.Line, it.Signature
+			}
+		}
+	}
+	return 0, ""
 }
 
 func (r *Renderer) entries(owner resolve.Owner, pf *model.PFD, sec string, top int, w *warnings) *[]EntryBody {
 	out := []EntryBody{}
 	for _, e := range pf.Section(sec) {
 		ref := r.P.EntryRef(owner, e.ID)
+		line, sig := analysis(pf, e.ID)
 		out = append(out, EntryBody{
-			ID: e.ID, Ref: ref, Name: e.Name,
+			ID: e.ID, Ref: ref, Name: e.Name, Line: line, Signature: sig,
 			Summary:  r.text(e.Summary, owner, ref, 0, w),
 			Document: r.text(e.Document, owner, ref, top, w),
 		})
@@ -385,6 +432,7 @@ func (r *Renderer) fileSummary(file string, pf *model.PFD, w *warnings) FileSumm
 	owner := resolve.FileOwner(file)
 	fs := FileSummary{
 		Path: r.P.Rel(file, false), Ref: r.P.Ref(owner), Source: r.P.Rel(resolve.PFDFile(file), false),
+		Stale: r.P.Stale(file, pf),
 	}
 	fs.Summary = r.text(pf.Summary, owner, fs.Ref, 0, w)
 	if r.Level >= Normal {
@@ -412,7 +460,8 @@ func (r *Renderer) File(file string) (*FileView, error) {
 	w := &warnings{}
 	v := &FileView{
 		DirdocView: ViewVersion, Kind: "file", Path: r.P.Rel(file, false), Ref: r.P.Ref(owner),
-		Source: r.P.Rel(resolve.PFDFile(file), false),
+		Source: r.P.Rel(resolve.PFDFile(file), false), Stale: r.P.Stale(file, pf),
+		language: analyze.Language(file),
 	}
 	v.Summary = r.text(pf.Summary, owner, v.Ref, 0, w)
 	v.Overview = r.overview(owner, pf, w)
@@ -420,6 +469,19 @@ func (r *Renderer) File(file string) (*FileView, error) {
 		v.Types = r.entries(owner, pf, model.SectionTypes, 4, w)
 		v.Functions = r.entries(owner, pf, model.SectionFunctions, 4, w)
 		v.Variables = r.entries(owner, pf, model.SectionVariables, 4, w)
+		refs := []BacklinkView{}
+		for _, b := range r.P.Backlinks(file) {
+			if b.From == owner {
+				continue // the file's own document
+			}
+			bv := r.backlink(b)
+			bv.Target = r.P.Ref(owner)
+			if b.ID != "" {
+				bv.Target += "#" + b.ID
+			}
+			refs = append(refs, bv)
+		}
+		v.ReferencedBy = &refs
 	}
 	val := diag.Validator{P: r.P, FS: true}
 	for _, dg := range val.PFD(file, pf) {
@@ -452,7 +514,7 @@ func (r *Renderer) Entry(abs string, isDir bool, id string) (*EntryView, error) 
 			DirdocView: ViewVersion, Kind: "dsd-entry", Ref: dv.Ref, Path: r.P.Rel(abs, true),
 			Source: r.P.Rel(resolve.DSDFile(abs), false), ID: id, Name: dv.Name,
 			Document: r.text(e.Document, owner, dv.Ref, 2, w), Paths: dv.Paths,
-			Refs: r.refViews(owner, e.Document),
+			Refs: r.refViews(owner, e.Document), ReferencedBy: r.dsdBacklinks(abs, d, id),
 		}
 		v.Warnings = w.list()
 		return v, nil
@@ -472,13 +534,84 @@ func (r *Renderer) Entry(abs string, isDir bool, id string) (*EntryView, error) 
 	ref := r.P.EntryRef(owner, id)
 	v := &EntryView{
 		DirdocView: ViewVersion, Kind: model.SectionKind(sec), Ref: ref, Path: r.P.Rel(abs, false),
-		Source: r.P.Rel(resolve.PFDFile(abs), false), ID: id, Name: e.Name,
+		Source: r.P.Rel(resolve.PFDFile(abs), false), ID: id, Name: e.Name, Stale: r.P.Stale(abs, pf),
 		Summary:  r.text(e.Summary, owner, ref, 0, w),
 		Document: r.text(e.Document, owner, ref, 2, w),
-		Refs:     r.refViews(owner, e.Summary, e.Document),
+		Refs:     r.refViews(owner, e.Summary, e.Document), ReferencedBy: []BacklinkView{},
+		language: analyze.Language(abs),
+	}
+	v.Line, v.Signature = analysis(pf, id)
+	for _, b := range r.P.Backlinks(abs) {
+		if b.ID == id && !(b.From == owner && b.FromID == id) {
+			v.ReferencedBy = append(v.ReferencedBy, r.backlink(b))
+		}
 	}
 	v.Warnings = w.list()
 	return v, nil
+}
+
+// dsdBacklinks returns the places that refer to the dsd entry id of dir: as dir/#id, or as a
+// directory of the tree that has no DSD of its own and so is described by the entry (design §10.3).
+func (r *Renderer) dsdBacklinks(dir string, d *model.DSD, id string) []BacklinkView {
+	out := []BacklinkView{}
+	owner := resolve.DirOwner(dir)
+	for _, b := range r.P.Backlinks(dir) {
+		if b.ID == id && !(b.From == owner && b.FromID == id) {
+			out = append(out, r.backlink(b))
+		}
+	}
+	for _, rel := range d.Paths(id) {
+		if rel == "" {
+			continue
+		}
+		abs := filepath.Join(dir, filepath.FromSlash(rel))
+		if own, err := r.P.DSD(abs); err != nil || own != nil {
+			continue
+		}
+		if inh := r.P.Inherited(abs); inh == nil || inh.Dir != filepath.Clean(dir) || inh.Node.DSD != id {
+			continue
+		}
+		for _, b := range r.P.Backlinks(abs) {
+			if b.ID == "" && !(b.From == owner && b.FromID == id) {
+				out = append(out, r.backlink(b))
+			}
+		}
+	}
+	return out
+}
+
+// backlink describes the place a reference was found in.
+func (r *Renderer) backlink(b resolve.Backlink) BacklinkView {
+	isDir := b.From.Kind == model.KindDSD
+	bv := BacklinkView{Ref: r.P.Ref(b.From), Kind: "file", Name: r.P.Rel(b.From.Path, isDir)}
+	if isDir {
+		bv.Kind = "directory"
+	}
+	if b.FromID != "" {
+		bv.Ref += "#" + b.FromID
+	}
+	if isDir {
+		d, _ := r.P.DSD(b.From.Path)
+		switch {
+		case d == nil:
+		case b.FromID == "":
+			bv.Summary = firstLine(d.Summary)
+		default:
+			bv.Kind, bv.Name = "dsd-entry", d.DisplayName(b.FromID, filepath.Base(b.From.Path))
+		}
+		return bv
+	}
+	pf, _ := r.P.PFD(b.From.Path)
+	switch {
+	case pf == nil:
+	case b.FromID == "":
+		bv.Summary = firstLine(pf.Summary)
+	default:
+		if sec, e := pf.Find(b.FromID); e != nil {
+			bv.Kind, bv.Name, bv.Summary = model.SectionKind(sec), e.Name, firstLine(e.Summary)
+		}
+	}
+	return bv
 }
 
 func (r *Renderer) refViews(owner resolve.Owner, texts ...string) []RefView {

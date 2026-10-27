@@ -1,0 +1,20 @@
+$ dirdoc tools/release.go#build
+exit: 0
+--- stdout
+# fn build(t) `tools/release.go#build`
+
+> アーカイブ名を返す
+
+Defined at `tools/release.go:22`:
+
+```go
+func build(t Target) string
+```
+
+名前には [[tools/release.go#Version]] が入る。対象は [[tools/release.go#Target]]。
+
+## References
+
+- [[tools/release.go#Version]] — var Version: リリースするバージョン
+- [[tools/release.go#Target]] — type Target: ビルド対象の OS とアーキテクチャ
+--- stderr

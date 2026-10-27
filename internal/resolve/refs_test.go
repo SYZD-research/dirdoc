@@ -89,3 +89,46 @@ func TestResolveAndInherit(t *testing.T) {
 		t.Errorf("Rel: %q %q", p.Rel(src, true), p.Rel(root, true))
 	}
 }
+
+func TestBacklinksAndStale(t *testing.T) {
+	root := t.TempDir()
+	os.WriteFile(filepath.Join(root, "dirdoc.toml"), nil, 0o644)
+	src := filepath.Join(root, "src")
+	os.MkdirAll(src, 0o755)
+	main := filepath.Join(src, "main.rs")
+	os.WriteFile(main, []byte("fn main() {}\n"), 0o644)
+	writeDoc(t, PFDFile(main), &model.PFD{Target: "main.rs", Summary: "see [[#run]]", TargetHash: model.Hash([]byte("fn main() {}\r\n")),
+		Functions: []model.Entry{{ID: "run", Name: "run()", Summary: "runs", Document: "[[#run]] and [[/src/main.rs#run]]"}}})
+	writeDoc(t, DSDFile(root), &model.DSD{Summary: "[[src/main.rs]] [[src/main.rs#run|again]] `[[src/main.rs#code]]`",
+		Entries: []model.DSDEntry{{ID: "x", Document: "[[src/main.rs#run]] [[src/]]"}}})
+
+	p, err := Open(root, root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, b := range p.Backlinks(main) {
+		got = append(got, p.Ref(b.From)+"#"+b.FromID+" -> "+b.ID)
+	}
+	want := "./# -> ,./# -> run,./#x -> run,src/main.rs# -> run,src/main.rs#run -> run"
+	if strings.Join(got, ",") != want {
+		t.Errorf("Backlinks = %v\nwant %s", got, want)
+	}
+
+	pf, _ := p.PFD(main)
+	if s := p.Stale(main, pf); s == nil || *s {
+		t.Errorf("Stale = %v, want false (only the line endings differ)", s)
+	}
+	os.WriteFile(main, []byte("fn main() { run() }\n"), 0o644)
+	p, _ = Open(root, root)
+	pf, _ = p.PFD(main)
+	if s := p.Stale(main, pf); s == nil || !*s {
+		t.Errorf("Stale = %v, want true", s)
+	}
+	if s := p.Stale(main, &model.PFD{Target: "main.rs"}); s != nil {
+		t.Errorf("Stale without target_hash = %v, want nil", *s)
+	}
+	if s := p.Stale(filepath.Join(src, "gone.rs"), pf); s != nil {
+		t.Errorf("Stale of a missing file = %v, want nil", *s)
+	}
+}

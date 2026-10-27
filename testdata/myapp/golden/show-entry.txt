@@ -11,4 +11,8 @@ exit: 0
 
 - [[src/main.rs#check_stdout]] — fn check_stdout(): 標準出力がTTYかを判定する
 - [[src/agent/pool.rs#spawn]] — fn spawn(n): ワーカーを n 個起動する
+
+## Referenced by
+
+- [[src/main.rs#Config]] — type Config: コマンドライン引数と設定ファイルから組み立てる実行時設定
 --- stderr

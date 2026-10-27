@@ -32,6 +32,12 @@ exit: 0
             "note": "ビルド成果物（記述不要）"
           },
           {
+            "name": "tools",
+            "type": "dir",
+            "note": "リリース用のスクリプト",
+            "has_dirdoc": true
+          },
+          {
             "name": "Cargo.toml",
             "type": "file"
           },
@@ -47,6 +53,10 @@ exit: 0
         {
           "path": "src/",
           "summary": "アプリ本体のソースコード。CLI とエージェント実行系からなる。"
+        },
+        {
+          "path": "tools/",
+          "summary": ""
         }
       ],
       "warnings": []
@@ -108,7 +118,7 @@ exit: 0
           "path": "src/main.rs",
           "ref": "src/main.rs",
           "source": "src/.dirdoc/main.rs.dirdoc_pfd",
-          "stale": null,
+          "stale": false,
           "summary": "CLIのエントリポイント。引数を解析して各サブコマンドへ委譲する。"
         }
       ],
@@ -150,8 +160,29 @@ exit: 0
           "path": "src/agent/pool.rs",
           "ref": "src/agent/pool.rs",
           "source": "src/agent/.dirdoc/pool.rs.dirdoc_pfd",
-          "stale": null,
+          "stale": false,
           "summary": "ワーカーのプール。"
+        }
+      ],
+      "subdirs": [],
+      "warnings": []
+    },
+    {
+      "dirdoc_view": 1,
+      "kind": "directory",
+      "path": "tools/",
+      "source": null,
+      "inherited_from": null,
+      "summary": "",
+      "tree": null,
+      "dsd": [],
+      "files": [
+        {
+          "path": "tools/release.go",
+          "ref": "tools/release.go",
+          "source": "tools/.dirdoc/release.go.dirdoc_pfd",
+          "stale": false,
+          "summary": "リリース用のスクリプト（Go）。対象の OS ごとにアーカイブ名を作る。"
         }
       ],
       "subdirs": [],

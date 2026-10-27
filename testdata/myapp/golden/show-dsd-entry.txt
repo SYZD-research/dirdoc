@@ -6,4 +6,8 @@ exit: 0
 Describes `src/cli/`.
 
 clap の derive でコマンドを定義する。
+
+## Referenced by
+
+- [[src/#src]] — dsd ソースルート
 --- stderr

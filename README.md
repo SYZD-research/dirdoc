@@ -4,7 +4,7 @@ Directory Document
 
 AI エージェント向けに、ディレクトリ（DSD）とファイル（PFD）の説明を各ディレクトリの `.dirdoc/` に保存し、`dirdoc [PATH]` で Markdown または JSON として表示する CLI です。保存形式は JSON を zstd で圧縮したものです。
 
-仕様は [docs/DESIGN.md](docs/DESIGN.md) を参照してください。現在の実装は Phase 1（MVP）です。
+仕様は [docs/DESIGN.md](docs/DESIGN.md) を参照してください。設計書のロードマップの Phase 1〜3 を実装しています。
 
 ## インストール
 
@@ -24,9 +24,16 @@ dirdoc src/                         # ディレクトリの概要・ツリー・
 dirdoc src/main.rs                  # ファイルの詳細
 dirdoc 'src/main.rs#main'           # 1 つの関数
 dirdoc search tty                   # 全文検索（圧縮されているので grep は使えない）
-dirdoc check                        # 検証（CI では --strict）
+dirdoc check                        # 検証（CI では --strict。--stale で古い記述、--undocumented で記述の無い Go のシンボルも）
+dirdoc status                       # どのディレクトリ・ファイルに説明があるか（stale・none なども）
+dirdoc touch src/main.rs            # コードは変えたが説明はそのままでよいとき、stale の表示を消す
+dirdoc edit src/main.rs             # $EDITOR で編集して compile（人間向け）
+dirdoc rm 'src/main.rs#old'         # エントリ（PATH だけなら文書全体）を消す
+dirdoc mv src/main.rs src/app.rs    # ファイルを説明ごと移動し、参照を書き換える
 dirdoc guide                        # AGENTS.md / CLAUDE.md に貼るエージェント向けの手順
 ```
+
+Go のファイルはコードも解析し、目次に行番号とシグネチャを付け、説明の無いシンボルを一覧にします。ファイルやエントリの表示には、どこから参照されているか（被参照）も出ます。
 
 一部だけ更新するときは `--merge` を使います。
 
@@ -37,6 +44,15 @@ name = "check_stdout()"
 summary = "標準出力がTTYかを判定する"
 EOF
 ```
+
+### git と MCP
+
+```bash
+dirdoc init --git                   # git diff で TOML を表示し、.dirdoc_* をエントリ単位でマージする（クローンごとに実行）
+claude mcp add dirdoc -- dirdoc mcp # MCP クライアントから show / search / compile などをツールとして使う
+```
+
+マージで衝突したファイルは、競合マーカー付きの TOML になります。編集してマーカーを消し、表示されたとおり `dirdoc compile <対象> <そのファイル>` で保存し直してください。
 
 ## 開発
 

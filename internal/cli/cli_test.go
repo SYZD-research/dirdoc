@@ -34,7 +34,37 @@ var fixtureFiles = map[string]string{
 	"src/agent/pool.rs":   "",
 	"src/agent/runner.rs": "",
 	"target/debug/myapp":  "",
+	"tools/release.go":    releaseGo,
 }
+
+// releaseGo is the one Go file of the fixture, for code analysis.
+const releaseGo = `// Command release prints the archive names of a myapp release.
+package main
+
+import "fmt"
+
+// Version is the version being released.
+const Version = "1.2.0"
+
+// Target is a platform to build for.
+type Target struct {
+	OS, Arch string
+}
+
+var targets = []Target{{"linux", "amd64"}, {"darwin", "arm64"}}
+
+func main() {
+	for _, t := range targets {
+		fmt.Println(build(t))
+	}
+}
+
+func build(t Target) string {
+	return fmt.Sprintf("myapp-%s-%s.tar.gz", Version, t)
+}
+
+func (t Target) String() string { return t.OS + "-" + t.Arch }
+`
 
 type result struct {
 	code           int
@@ -167,8 +197,16 @@ var goldenCases = []struct {
 	{name: "show-recursive-json", json: true, args: []string{"-r", "--brief", "-f", "json"}},
 	{name: "show-undocumented", args: []string{"docs"}},
 	{name: "show-missing-entry", args: []string{"src/main.rs#nope"}},
+	{name: "show-go-file", args: []string{"tools/release.go"}},
+	{name: "show-go-file-json", json: true, args: []string{"tools/release.go", "-f", "json"}},
+	{name: "show-go-entry", args: []string{"tools/release.go#build"}},
+	{name: "show-go-entry-json", json: true, args: []string{"tools/release.go#Version", "-f", "json"}},
 	{name: "check", args: []string{"check"}},
 	{name: "check-json", json: true, args: []string{"check", "-f", "json"}},
+	{name: "check-undocumented", args: []string{"check", "--undocumented"}},
+	{name: "status", args: []string{"status"}},
+	{name: "status-json", json: true, args: []string{"status", "src", "-f", "json"}},
+	{name: "cat-pfd", args: []string{"cat", "src/.dirdoc/main.rs.dirdoc_pfd"}},
 	{name: "search", args: []string{"search", "ワーカー"}},
 	{name: "search-json", json: true, args: []string{"search", "tty", "-f", "json"}},
 	{name: "export-src", args: []string{"export", "src/"}},
@@ -241,8 +279,8 @@ func TestStoredFilesMatchSchemas(t *testing.T) {
 		count++
 		return nil
 	})
-	if count != 5 {
-		t.Errorf("found %d stored documents, want 5", count)
+	if count != 6 {
+		t.Errorf("found %d stored documents, want 6", count)
 	}
 }
 

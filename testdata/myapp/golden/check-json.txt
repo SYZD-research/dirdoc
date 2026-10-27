@@ -4,7 +4,7 @@ exit: 0
 {
   "dirdoc_view": 1,
   "kind": "check",
-  "documents": 5,
+  "documents": 6,
   "errors": 0,
   "warnings": 0,
   "diagnostics": []

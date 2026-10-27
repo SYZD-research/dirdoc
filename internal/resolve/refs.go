@@ -126,32 +126,31 @@ func (r Resolved) Text(ref Ref) string {
 	return "[[" + r.Ref + "]]"
 }
 
-// Resolve finds the target of r written in a document of owner.
-func (p *Project) Resolve(owner Owner, r Ref) Resolved {
+// Target returns the path r points to from a document of owner and whether it is a directory,
+// without loading anything. outside reports a path outside the project root.
+func (p *Project) Target(owner Owner, r Ref) (abs string, isDir, outside bool) {
 	if r.Path == "" {
-		res := Resolved{Abs: owner.Path, IsDir: owner.Kind == model.KindDSD, ID: r.ID, Ref: p.Ref(owner)}
-		if r.ID != "" {
-			res.Ref += "#" + r.ID
-		}
-		p.lookup(&res)
-		if res.Status == RefBroken && r.ID != "" {
-			res.Status = RefMissingLocal
-		}
-		return res
+		return owner.Path, owner.Kind == model.KindDSD, false
 	}
 	rel, base := r.Path, owner.Dir()
 	if strings.HasPrefix(rel, "/") {
 		rel, base = strings.TrimLeft(rel, "/"), p.Root
 	}
-	abs := filepath.Join(base, filepath.FromSlash(rel))
-	isDir := rel == "" || strings.HasSuffix(rel, "/") || path.Base(rel) == "." || path.Base(rel) == ".."
+	abs = filepath.Join(base, filepath.FromSlash(rel))
+	isDir = rel == "" || strings.HasSuffix(rel, "/") || path.Base(rel) == "." || path.Base(rel) == ".."
 	if !isDir {
 		if st, err := os.Stat(abs); err == nil && st.IsDir() {
 			isDir = true
 		}
 	}
+	return abs, isDir, !p.Within(abs)
+}
+
+// Resolve finds the target of r written in a document of owner.
+func (p *Project) Resolve(owner Owner, r Ref) Resolved {
+	abs, isDir, outside := p.Target(owner, r)
 	res := Resolved{Abs: abs, IsDir: isDir, ID: r.ID}
-	if !p.Within(abs) {
+	if outside {
 		res.Status, res.Reason, res.Ref = RefOutside, "outside the project root", r.Target
 		return res
 	}
@@ -160,6 +159,9 @@ func (p *Project) Resolve(owner Owner, r Ref) Resolved {
 		res.Ref += "#" + r.ID
 	}
 	p.lookup(&res)
+	if r.Path == "" && r.ID != "" && res.Status == RefBroken {
+		res.Status = RefMissingLocal
+	}
 	return res
 }
 
@@ -216,4 +218,35 @@ func (p *Project) lookup(res *Resolved) {
 		return
 	}
 	res.Kind, res.Name, res.Summary = model.SectionKind(sec), e.Name, e.Summary
+}
+
+// Backlink is a place in the documentation that refers to a target.
+type Backlink struct {
+	From   Owner  // the document holding the reference
+	FromID string // the entry holding it; "" for the document's summary
+	ID     string // the entry of the target it points to; "" for the target itself
+}
+
+// Backlinks returns the places in the project's documentation that refer to target (a file or a
+// directory) or to one of its entries, in the order check visits documents. A place that refers to
+// the same thing more than once is listed once.
+func (p *Project) Backlinks(target string) []Backlink {
+	target = filepath.Clean(target)
+	var out []Backlink
+	seen := map[Backlink]bool{}
+	p.Documents(p.Root, func(doc Document) {
+		doc.Texts(func(id string, text *string) {
+			for _, r := range FindRefs(*text) {
+				if abs, _, outside := p.Target(doc.Owner, r); outside || abs != target {
+					continue
+				}
+				b := Backlink{From: doc.Owner, FromID: id, ID: r.ID}
+				if !seen[b] {
+					seen[b] = true
+					out = append(out, b)
+				}
+			}
+		})
+	})
+	return out
 }

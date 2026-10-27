@@ -13,50 +13,70 @@ import (
 )
 
 // EmitDSD prints d as a TOML source. header is written as a comment at the top.
-func EmitDSD(d *model.DSD, header string) string {
+func EmitDSD(d *model.DSD, header string) string { return emitDSD(d, header, nil) }
+
+// EmitPFD prints p as a TOML source. The overview and target_hash are left out: compile generates them.
+func EmitPFD(p *model.PFD, header string) string { return emitPFD(p, header, nil) }
+
+func emitDSD(d *model.DSD, header string, cs conflicts) string {
 	var w tomlWriter
 	w.comment(header)
-	w.kv("summary", d.Summary)
-	if d.Tree != nil {
+	w.or(cs, "", "", "summary", func() { w.kv("summary", d.Summary) })
+	if d.Tree != nil || cs.has("", "", "tree") {
 		w.blank()
-		w.raw("tree = " + multiline(FormatTree(d.Tree, LinkAnnotator)))
 	}
-	w.extra(d.Extra)
+	w.or(cs, "", "", "tree", func() {
+		if d.Tree != nil {
+			w.raw("tree = " + multiline(FormatTree(d.Tree, LinkAnnotator)))
+		}
+	})
+	w.extras(cs, "", "", d.Extra)
 	for _, e := range d.Entries {
 		w.blank()
-		w.raw("[[dsd]]")
-		w.kv("id", e.ID)
-		if e.Name != "" {
-			w.kv("name", e.Name)
-		}
-		if e.Document != "" {
-			w.raw("document = " + multiline(e.Document))
-		}
-		w.extra(e.Extra)
+		w.or(cs, model.SectionDSD, e.ID, "", func() { w.dsdEntry(cs, e) })
 	}
 	return w.String()
 }
 
-// EmitPFD prints p as a TOML source. The overview and target_hash are left out: compile generates them.
-func EmitPFD(p *model.PFD, header string) string {
+func emitPFD(p *model.PFD, header string, cs conflicts) string {
 	var w tomlWriter
 	w.comment(header)
-	w.kv("summary", p.Summary)
-	w.extra(p.Extra)
+	w.or(cs, "", "", "summary", func() { w.kv("summary", p.Summary) })
+	w.extras(cs, "", "", p.Extra)
 	for _, sec := range model.PFDSections {
 		for _, e := range p.Section(sec) {
 			w.blank()
-			w.raw("[[" + sec + "]]")
-			w.kv("id", e.ID)
-			w.kv("name", e.Name)
-			w.kv("summary", e.Summary)
-			if e.Document != "" {
-				w.raw("document = " + multiline(e.Document))
-			}
-			w.extra(e.Extra)
+			w.or(cs, sec, e.ID, "", func() { w.entry(cs, sec, e) })
 		}
 	}
 	return w.String()
+}
+
+func (w *tomlWriter) dsdEntry(cs conflicts, e model.DSDEntry) {
+	w.raw("[[" + model.SectionDSD + "]]")
+	w.kv("id", e.ID)
+	w.or(cs, model.SectionDSD, e.ID, "name", func() {
+		if e.Name != "" {
+			w.kv("name", e.Name)
+		}
+	})
+	w.or(cs, model.SectionDSD, e.ID, "document", func() { w.document(e.Document) })
+	w.extras(cs, model.SectionDSD, e.ID, e.Extra)
+}
+
+func (w *tomlWriter) entry(cs conflicts, sec string, e model.Entry) {
+	w.raw("[[" + sec + "]]")
+	w.kv("id", e.ID)
+	w.or(cs, sec, e.ID, "name", func() { w.kv("name", e.Name) })
+	w.or(cs, sec, e.ID, "summary", func() { w.kv("summary", e.Summary) })
+	w.or(cs, sec, e.ID, "document", func() { w.document(e.Document) })
+	w.extras(cs, sec, e.ID, e.Extra)
+}
+
+func (w *tomlWriter) document(doc string) {
+	if doc != "" {
+		w.raw("document = " + multiline(doc))
+	}
 }
 
 // EmitJSON prints a document as an indented JSON source.
@@ -78,8 +98,9 @@ func EmitJSON(d *model.DSD, p *model.PFD) (string, error) {
 	return buf.String() + "\n", nil
 }
 
-// ScaffoldDSD is the template `dirdoc export` prints for a directory that has no DSD yet.
-func ScaffoldDSD(header, compileCmd string, tree *model.TreeNode) string {
+// ScaffoldDSD is the template `dirdoc export` prints for a directory that has no DSD yet. headings
+// are the headings dirdoc.toml requires of dsd entry documents ([template]).
+func ScaffoldDSD(header, compileCmd string, tree *model.TreeNode, headings []string) string {
 	var w tomlWriter
 	w.comment(header)
 	w.comment("Fill in the summary and the entries, then run:\n  " + compileCmd)
@@ -93,13 +114,23 @@ func ScaffoldDSD(header, compileCmd string, tree *model.TreeNode) string {
 id = "cli"
 name = "CLI"     # optional; defaults to the name of the tree node that links to it
 document = '''
-Markdown body. Link to other entries with [[#id]], [[file#id]] or [[dir/]].
+Markdown body. Link to other entries with [[#id]], [[file#id]] or [[dir/]].` + exampleHeadings(headings) + `
 '''`)
 	return w.String()
 }
 
-// ScaffoldPFD is the template `dirdoc export` prints for a file that has no PFD yet.
-func ScaffoldPFD(header, compileCmd string) string {
+// exampleHeadings lists required headings at the end of an example document.
+func exampleHeadings(headings []string) string {
+	var b strings.Builder
+	for _, h := range headings {
+		b.WriteString("\n\n## " + h)
+	}
+	return b.String()
+}
+
+// ScaffoldPFD is the template `dirdoc export` prints for a file that has no PFD yet, with the
+// headings dirdoc.toml requires of type and function documents in the examples.
+func ScaffoldPFD(header, compileCmd string, typeHeadings, funcHeadings []string) string {
 	var w tomlWriter
 	w.comment(header)
 	w.comment("Fill in the summary and the entries, then run:\n  " + compileCmd)
@@ -110,14 +141,14 @@ func ScaffoldPFD(header, compileCmd string) string {
 name = "Config"
 summary = "One-line description"
 document = '''
-Markdown body (optional)
+Markdown body (optional)` + exampleHeadings(typeHeadings) + `
 '''
 
 [[functions]]
 name = "check_stdout()"   # the id defaults to the part before "(" (set id = "..." to override)
 summary = "One-line description"
 document = '''
-Markdown body (optional). Link with [[#id]], [[other.rs#id]] or [[dir/]].
+Markdown body (optional). Link with [[#id]], [[other.rs#id]] or [[dir/]].` + exampleHeadings(funcHeadings) + `
 '''
 
 [[variables]]
@@ -154,25 +185,38 @@ func (w *tomlWriter) kv(key, value string) {
 	w.raw(key + " = " + basicString(value))
 }
 
-// extra prints "x-" fields. Other unknown fields cannot be compiled back, so they are only noted.
-func (w *tomlWriter) extra(e model.Extra) {
+// extras prints "x-" fields, and the conflicts on such fields of the same table.
+func (w *tomlWriter) extras(cs conflicts, sec, id string, e model.Extra) {
 	keys := make([]string, 0, len(e))
 	for k := range e {
 		keys = append(keys, k)
 	}
+	for _, k := range cs.keys(sec, id) {
+		if _, ok := e[k]; !ok && strings.HasPrefix(k, "x-") {
+			keys = append(keys, k)
+		}
+	}
 	sort.Strings(keys)
 	for _, k := range keys {
-		if !strings.HasPrefix(k, "x-") {
-			w.comment(fmt.Sprintf("dirdoc: field %q is not shown (unknown to this version)", k))
-			continue
-		}
-		v, ok := tomlValue(e[k])
-		if !ok {
-			w.comment(fmt.Sprintf("dirdoc: field %q has no TOML form (null)", k))
-			continue
-		}
-		w.raw(tomlKey(k) + " = " + v)
+		w.or(cs, sec, id, k, func() { w.extra(k, e[k]) })
 	}
+}
+
+// extra prints an "x-" field. Other unknown fields cannot be compiled back, so they are only noted.
+func (w *tomlWriter) extra(k string, raw json.RawMessage) {
+	if raw == nil {
+		return
+	}
+	if !strings.HasPrefix(k, "x-") {
+		w.comment(fmt.Sprintf("dirdoc: field %q is not shown (unknown to this version)", k))
+		return
+	}
+	v, ok := tomlValue(raw)
+	if !ok {
+		w.comment(fmt.Sprintf("dirdoc: field %q has no TOML form (null)", k))
+		return
+	}
+	w.raw(tomlKey(k) + " = " + v)
 }
 
 var bareKeyRe = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)

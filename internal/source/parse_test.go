@@ -122,3 +122,31 @@ func TestEmitPFDRoundTrip(t *testing.T) {
 		t.Errorf("variable = %+v %s", vars[0], vars[0].Extra["x-unit"])
 	}
 }
+
+func TestConflictMarkers(t *testing.T) {
+	src := "summary = \"s\"\n\n<<<<<<< ours\n[[functions]]\nname = \"f()\"\nsummary = \"a\"\n=======\n>>>>>>> theirs\n"
+	_, l := Parse([]byte(src), "c.toml", model.KindPFD)
+	if len(l) != 1 || l[0].Line != 3 || !strings.Contains(l[0].Message, "unresolved merge conflict") {
+		t.Errorf("conflict markers: %v", l)
+	}
+	// A setext heading underline in a document is not a marker.
+	if _, l := Parse([]byte("summary = \"s\"\n[[functions]]\nname = \"f()\"\nsummary = \"a\"\ndocument = '''\nTitle\n=======\n'''\n"), "ok.toml", model.KindPFD); len(l) > 0 {
+		t.Errorf("valid source: %v", l)
+	}
+}
+
+func TestEmitConflictsKeepsOtherKeys(t *testing.T) {
+	d := &model.DSD{Summary: "merged", Entries: []model.DSDEntry{{ID: "a", Name: "A", Document: "ours"}}}
+	text := EmitConflicts(d, nil, "dirdoc dsd: src/", []Conflict{
+		{Section: model.SectionDSD, ID: "a", Key: "document", Ours: "ours", Theirs: "theirs"},
+		{Section: model.SectionDSD, ID: "b", Key: "", Theirs: &model.DSDEntry{ID: "b"}},
+	})
+	want := "# dirdoc dsd: src/\nsummary = \"merged\"\n\n[[dsd]]\nid = \"a\"\nname = \"A\"\n" +
+		"<<<<<<< ours\ndocument = '''\nours\n'''\n=======\ndocument = '''\ntheirs\n'''\n>>>>>>> theirs\n"
+	if text != want {
+		t.Errorf("EmitConflicts:\n%s\nwant:\n%s", text, want)
+	}
+	if ScaffoldPFD("h", "c", []string{"Fields"}, nil) == ScaffoldPFD("h", "c", nil, nil) {
+		t.Error("the required headings are not in the template")
+	}
+}

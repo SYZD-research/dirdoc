@@ -49,6 +49,11 @@ const (
 	CodeSummaryLong   = "summary-long"
 	CodeUnknownFile   = "unknown-file"
 	CodeSourceIgnored = "source-ignored"
+
+	// Reported only when asked for (check --stale, check --undocumented) or configured ([template]).
+	CodeStale           = "stale"
+	CodeUndocumented    = "undocumented"
+	CodeTemplateHeading = "template-heading"
 )
 
 // Diagnostic is one problem. Path is a dirdoc location (a path or a ref such as src/main.rs#main);

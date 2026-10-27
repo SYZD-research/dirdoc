@@ -114,6 +114,11 @@ func (a *App) compile(target, srcArg string, merge, dryRun, strict bool) error {
 			}
 		}
 		pf, loc, l := compile.PFD(doc, base, filepath.Base(abs), merge)
+		var content []byte
+		if content, err = os.ReadFile(abs); err != nil {
+			return exitf(exitError, "%v", err)
+		}
+		compile.Generate(pf, content)
 		all = append(all, l...)
 		p.SetPFD(abs, pf)
 		val.Loc = loc
@@ -172,63 +177,9 @@ func (a *App) exportCmd() *cobra.Command {
 }
 
 func (a *App) export(target, out, format string, depth int) error {
-	abs := a.abs(target)
-	if resolve.InsideDirdoc(abs) {
-		return exitf(exitError, "%s is inside a .dirdoc directory", target)
-	}
-	kind, err := targetKind(abs)
-	if err != nil {
-		if _, perr := os.Stat(resolve.PFDFile(abs)); perr != nil {
-			return exitf(exitError, "%s: no such file or directory", target)
-		}
-		kind = model.KindPFD // the file is gone but its PFD remains
-	}
-	p, err := a.openProject(abs)
+	text, err := a.exportText(target, format, depth)
 	if err != nil {
 		return err
-	}
-	isDir := kind == model.KindDSD
-	rel := p.Rel(abs, isDir)
-	header := fmt.Sprintf("dirdoc %s: %s", kind, rel)
-	compileCmd := fmt.Sprintf("dirdoc compile %s <this file>", shellArg(rel))
-
-	var text string
-	if isDir {
-		d, err := p.DSD(abs)
-		if err != nil {
-			return exitf(exitError, "%v", err)
-		}
-		switch {
-		case d != nil && format == "json":
-			text, err = source.EmitJSON(d, nil)
-		case d != nil:
-			text = source.EmitDSD(d, header)
-		case format == "json":
-			text, err = source.EmitJSON(&model.DSD{Tree: scaffoldTree(p, abs, depth)}, nil)
-		default:
-			text = source.ScaffoldDSD(header, compileCmd, scaffoldTree(p, abs, depth))
-		}
-		if err != nil {
-			return exitf(exitError, "%v", err)
-		}
-	} else {
-		pf, err := p.PFD(abs)
-		if err != nil {
-			return exitf(exitError, "%v", err)
-		}
-		switch {
-		case pf != nil && format == "json":
-			text, err = source.EmitJSON(nil, pf)
-		case pf != nil:
-			text = source.EmitPFD(pf, header)
-		case format == "json":
-			text, err = source.EmitJSON(nil, &model.PFD{Target: filepath.Base(abs)})
-		default:
-			text = source.ScaffoldPFD(header, compileCmd)
-		}
-		if err != nil {
-			return exitf(exitError, "%v", err)
-		}
 	}
 	if out == "" {
 		_, err = fmt.Fprint(a.Stdout, text)
@@ -239,6 +190,69 @@ func (a *App) export(target, out, format string, depth int) error {
 	}
 	fmt.Fprintf(a.Stderr, "wrote %s\n", out)
 	return nil
+}
+
+// exportText returns the source of target's documentation, or a template when it has none.
+func (a *App) exportText(target, format string, depth int) (string, error) {
+	abs := a.abs(target)
+	if resolve.InsideDirdoc(abs) {
+		return "", exitf(exitError, "%s is inside a .dirdoc directory", target)
+	}
+	kind, err := targetKind(abs)
+	if err != nil {
+		if _, perr := os.Stat(resolve.PFDFile(abs)); perr != nil {
+			return "", exitf(exitError, "%s: no such file or directory", target)
+		}
+		kind = model.KindPFD // the file is gone but its PFD remains
+	}
+	p, err := a.openProject(abs)
+	if err != nil {
+		return "", err
+	}
+	isDir := kind == model.KindDSD
+	rel := p.Rel(abs, isDir)
+	header := fmt.Sprintf("dirdoc %s: %s", kind, rel)
+	compileCmd := fmt.Sprintf("dirdoc compile %s <this file>", shellArg(rel))
+
+	var text string
+	if isDir {
+		d, err := p.DSD(abs)
+		if err != nil {
+			return "", exitf(exitError, "%v", err)
+		}
+		switch {
+		case d != nil && format == "json":
+			text, err = source.EmitJSON(d, nil)
+		case d != nil:
+			text = source.EmitDSD(d, header)
+		case format == "json":
+			text, err = source.EmitJSON(&model.DSD{Tree: scaffoldTree(p, abs, depth)}, nil)
+		default:
+			text = source.ScaffoldDSD(header, compileCmd, scaffoldTree(p, abs, depth), p.Config.Template.DSD)
+		}
+		if err != nil {
+			return "", exitf(exitError, "%v", err)
+		}
+	} else {
+		pf, err := p.PFD(abs)
+		if err != nil {
+			return "", exitf(exitError, "%v", err)
+		}
+		switch {
+		case pf != nil && format == "json":
+			text, err = source.EmitJSON(nil, pf)
+		case pf != nil:
+			text = source.EmitPFD(pf, header)
+		case format == "json":
+			text, err = source.EmitJSON(nil, &model.PFD{Target: filepath.Base(abs)})
+		default:
+			text = source.ScaffoldPFD(header, compileCmd, p.Config.Template.Type, p.Config.Template.Function)
+		}
+		if err != nil {
+			return "", exitf(exitError, "%v", err)
+		}
+	}
+	return text, nil
 }
 
 // scaffoldTree lists dir from the file system for a new DSD, down to depth levels. Subdirectories

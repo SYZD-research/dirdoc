@@ -1,10 +1,12 @@
 // Package compile turns a parsed source into the document to store: it merges with the existing
-// document when asked, normalizes text and generates the overview. Validation is diag.Validator's job.
+// document when asked, normalizes text and generates the overview and the target hash. Validation is
+// diag.Validator's job.
 package compile
 
 import (
 	"strings"
 
+	"github.com/SYZD-research/dirdoc/internal/analyze"
 	"github.com/SYZD-research/dirdoc/internal/diag"
 	"github.com/SYZD-research/dirdoc/internal/model"
 	"github.com/SYZD-research/dirdoc/internal/source"
@@ -199,7 +201,7 @@ func PFD(src *source.Doc, base *model.PFD, target string, merge bool) (*model.PF
 		}
 	}
 	out.Target = target
-	out.TargetHash = "" // recorded from Phase 2 on (design §10.5)
+	out.TargetHash = "" // Generate records it from the file's content
 	if src.Target != nil && *src.Target != target {
 		d := l.Errorf(diag.CodeTargetMismatch, "", "target %q does not match the file name %q", *src.Target, target)
 		d.File, d.Line = src.File, src.TopLines["target"]
@@ -215,6 +217,15 @@ func PFD(src *source.Doc, base *model.PFD, target string, merge bool) (*model.PF
 	}
 	out.Overview = model.BuildOverview(out)
 	return out, loc, l
+}
+
+// Generate records what compile derives from the documented file itself: the hash of its content
+// (design §10.5) and, for a language dirdoc analyzes, the line numbers and signatures of the
+// overview and the symbols no entry documents (design §5.3).
+func Generate(p *model.PFD, content []byte) {
+	p.TargetHash = model.Hash(content)
+	p.Overview = model.BuildOverview(p)
+	model.AnnotateOverview(&p.Overview, analyze.File(p.Target, content))
 }
 
 func entryID(se *source.Entry) string {

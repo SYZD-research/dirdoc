@@ -12,6 +12,7 @@ exit: 0
 ├── docs/
 ├── src/     (dirdoc)  # アプリ本体
 ├── target/            # ビルド成果物（記述不要）
+├── tools/   (dirdoc)  # リリース用のスクリプト
 ├── Cargo.toml
 └── dirdoc.toml
 ```
@@ -19,6 +20,7 @@ exit: 0
 ## Subdirectories
 
 - `src/` — アプリ本体のソースコード。CLI とエージェント実行系からなる。
+- `tools/`
 
 # src/
 
@@ -56,4 +58,10 @@ exit: 0
 ## Files
 
 - `src/agent/pool.rs` — ワーカーのプール。
+
+# tools/
+
+## Files
+
+- `tools/release.go` — リリース用のスクリプト（Go）。対象の OS ごとにアーカイブ名を作る。
 --- stderr

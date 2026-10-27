@@ -10,6 +10,8 @@ exit: 0
 - `dirdoc <dir>` でディレクトリの概要・ツリー・各ファイルの目次を、`dirdoc <file>` でファイルの詳細を、`dirdoc '<file>#<id>'` で個々の型・関数の説明を読む。量を減らすなら `--brief`、本文まで全部なら `--full`、JSON なら `-f json`。
 - `[[…]]` は参照。中身をそのまま `dirdoc '…'` に渡すと開ける。
 - 検索は `dirdoc search <語>`。`.dirdoc/` 内のファイルは圧縮されていて grep できない。
+- `> stale:` で始まるビューは、ファイルの古い版の説明。頼る前にコードを確かめる。
+- どのディレクトリ・ファイルに説明があるか（古いか、無いか）は `dirdoc status` で一覧できる。
 - `.dirdoc/` 内のファイルを直接読み書きしない。
 
 ### 書く
@@ -27,6 +29,8 @@ exit: 0
   ```
 
 - 全体を書き直す: `dirdoc export <target> > /tmp/x.toml` → 編集 → `dirdoc compile <target> /tmp/x.toml`。説明がまだ無いときは、export がひな形を出す。
+- ファイルを変えたが説明を直す必要が無いときは、`dirdoc touch <file>` で stale の表示を消す。
+- 説明のあるファイルの名前変更・移動は `dirdoc mv <old> <new>` で行う（説明が一緒に移り、参照も書き換わる）。説明を消すときは `dirdoc rm <path>` か `dirdoc rm '<file>#<id>'`。
 - 最後に `dirdoc check` を通す。
 
 ### 元ファイル（TOML）の形

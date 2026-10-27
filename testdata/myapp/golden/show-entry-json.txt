@@ -9,6 +9,7 @@ exit: 0
   "source": "src/.dirdoc/main.rs.dirdoc_pfd",
   "id": "check_stdout",
   "name": "check_stdout()",
+  "stale": false,
   "summary": "標準出力がTTYかを判定する",
   "document": "TTYなら色付き出力を有効にする。上限値は [[src/main.rs#MAX_AGENTS]] を参照。\n\n## 注意\nWindows では `GetConsoleMode` を使う。",
   "refs": [
@@ -18,6 +19,14 @@ exit: 0
       "kind": "variable",
       "name": "MAX_AGENTS",
       "summary": "同時に処理するエージェント数の上限（既定 8）"
+    }
+  ],
+  "referenced_by": [
+    {
+      "ref": "src/main.rs#main",
+      "kind": "function",
+      "name": "main()",
+      "summary": "プロセスのエントリポイント"
     }
   ],
   "warnings": []

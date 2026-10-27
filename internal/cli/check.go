@@ -17,22 +17,30 @@ import (
 	"github.com/SYZD-research/dirdoc/internal/resolve"
 )
 
+type checkOptions struct {
+	strict       bool
+	stale        bool
+	undocumented bool
+	format       string
+}
+
 func (a *App) checkCmd() *cobra.Command {
-	var strict bool
-	var format string
+	var o checkOptions
 	c := &cobra.Command{
 		Use:   "check [PATH]",
 		Short: "Validate the documentation below PATH (default: the whole project)",
 		Args:  usageArgs(cobra.MaximumNArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if format != "text" && format != "json" {
-				return usagef(cmd, "unknown format %q (use text or json)", format)
+			if o.format != "text" && o.format != "json" {
+				return usagef(cmd, "unknown format %q (use text or json)", o.format)
 			}
-			return a.check(args, strict, format)
+			return a.check(args, o)
 		},
 	}
-	c.Flags().BoolVar(&strict, "strict", false, "treat warnings as errors (for CI)")
-	c.Flags().StringVarP(&format, "format", "f", "text", "output format: text or json")
+	c.Flags().BoolVar(&o.strict, "strict", false, "treat warnings as errors (for CI)")
+	c.Flags().BoolVar(&o.stale, "stale", false, "also report files that changed since their PFD was compiled")
+	c.Flags().BoolVar(&o.undocumented, "undocumented", false, "also report symbols of documented Go files that have no entry")
+	c.Flags().StringVarP(&o.format, "format", "f", "text", "output format: text or json")
 	return c
 }
 
@@ -81,7 +89,7 @@ func (a *App) startPath(args []string, p *resolve.Project) string {
 	return p.Root
 }
 
-func (a *App) check(args []string, strict bool, format string) error {
+func (a *App) check(args []string, o checkOptions) error {
 	start := a.Cwd
 	if len(args) == 1 {
 		start = a.abs(args[0])
@@ -98,7 +106,7 @@ func (a *App) check(args []string, strict bool, format string) error {
 	start = a.startPath(args, p)
 	all := diag.List{}
 	docs := 0
-	val := diag.Validator{P: p, FS: true}
+	val := diag.Validator{P: p, FS: true, Stale: o.stale, Undocumented: o.undocumented}
 	found := eachDocument(p, start,
 		func(dir string) {
 			docs++
@@ -126,7 +134,7 @@ func (a *App) check(args []string, strict bool, format string) error {
 		return nil
 	}
 	e, w := all.Count()
-	if format == "json" {
+	if o.format == "json" {
 		b, err := render.JSON(checkReport{DirdocView: render.ViewVersion, Kind: "check", Documents: docs, Errors: e, Warnings: w, Diagnostics: all})
 		if err != nil {
 			return exitf(exitError, "%v", err)
@@ -136,7 +144,7 @@ func (a *App) check(args []string, strict bool, format string) error {
 		a.printDiags(a.Stdout, all)
 		fmt.Fprintf(a.Stdout, "checked %s: %s, %s\n", plural(docs, "document"), plural(e, "error"), plural(w, "warning"))
 	}
-	if all.Failed(strict) {
+	if all.Failed(o.strict) {
 		return &exitErr{code: exitError}
 	}
 	return nil
