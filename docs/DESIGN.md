@@ -11,9 +11,9 @@
 | 正（Source of Truth） | `.dirdoc_*`（zstd 圧縮 JSON）。git で管理するのもこれだけ | 元ファイルは一時的なもの |
 | 編集フロー | `export` でテキスト化 → 編集 → `compile` で検証して書き戻す | `--merge` で部分更新、標準入力も可 |
 | 元ファイルの記法 | TOML（JSON も入力可） | Tree は TOML 文字列の中に独自記法で書く |
-| Overview | compile 時に Types / Functions / Variables から生成 | Go のファイルはコードも解析し、行番号・シグネチャ・記述の無いシンボルを足す（§10.6） |
+| Overview | compile 時に Types / Functions / Variables から生成 | Go・Rust・TypeScript・JavaScript・Java・Kotlin・Python・シェルのファイルはコードも解析し、行番号・シグネチャ・記述の無いシンボルを足す（§10.6） |
 | 実装言語 | Go | zstd は純 Go 実装を使い、cgo 不要 |
-| 型の記述 | PFD に任意の `types` セクションを追加する | 元の仕様からの追加。メソッドは functions に `Pool::spawn()` のように書く |
+| 型の記述 | PFD に任意の `types` セクションを追加する | 元の仕様からの追加。メソッドは functions に `Pool::spawn()`（Rust）や `Pool.spawn()` のように、コード解析と同じ ID で書く（§10.6） |
 | 古さの検知 | PFD に対象ファイルのハッシュを記録する | 表示時に 1 行の注意を出すだけ。`check` は `--stale` を付けたときだけ報告する（§10.5） |
 | DSD 配列のキー名 | 仕様どおり `dsd` | |
 | summary の長さ | DSD 200 / PFD 400 / エントリ 120 文字 | 超えたら警告するだけ。設定で変えられる |
@@ -212,10 +212,10 @@ myapp/
 | `functions` | FunctionEntry[] | 任意 | |
 | `variables` | VariableEntry[] | 任意 | |
 
-- **TypeEntry**: `name`（必須）、`summary`（必須）、`id`（省略時は name から導出）、`document`（任意、Markdown）。クラス・構造体・インターフェース・列挙型などを書く。メソッドは types の中に入れ子にせず、functions に `Pool::spawn()` のように型名を付けて書く。
+- **TypeEntry**: `name`（必須）、`summary`（必須）、`id`（省略時は name から導出）、`document`（任意、Markdown）。クラス・構造体・インターフェース・列挙型などを書く。メソッドは types の中に入れ子にせず、functions に `Pool::spawn()`（Rust）や `Pool.spawn()` のように型名を付けて書く（コード解析と同じ ID にする。§10.6）。
 - **FunctionEntry**: `name`（必須）、`summary`（必須）、`id`（省略時は name から導出）、`document`（任意、Markdown）
 - **VariableEntry**: `name`（必須）、`summary`（必須）、`id`（省略時は name から導出）。仕様どおり `document` は持たない。
-- **overview**: `types` / `functions` / `variables` のそれぞれについて、記述順に `{id, name, summary}` を並べたもの。対象ファイルを解析できるとき（Go のファイル。§10.6）は、ID が一致するシンボルの `line`（行番号）と `signature`（1 行の宣言）を各項目に足し、どのエントリも指していないシンボルを `undocumented`（`{id, kind, line, signature}` の配列、行番号順）に並べる。解析していないときは `undocumented` 自体が無い（空配列は「解析したがすべて記述済み」の意味）。
+- **overview**: `types` / `functions` / `variables` のそれぞれについて、記述順に `{id, name, summary}` を並べたもの。対象ファイルを解析できるとき（§10.6 の言語のファイル）は、ID が一致するシンボルの `line`（行番号）と `signature`（1 行の宣言）を各項目に足し、どのエントリも指していないシンボルを `undocumented`（`{id, kind, line, signature}` の配列、行番号順）に並べる。解析していないときは `undocumented` 自体が無い（空配列は「解析したがすべて記述済み」の意味）。
 
 ```json
 "overview": {
@@ -395,7 +395,7 @@ dirdoc compile <TARGET> <SOURCE | -> [--merge] [--dry-run] [--strict]
 2. `--merge` なら既存のドキュメントとマージする（§9.2）
 3. 正規化する: `id` の補完、改行と前後の空白の正規化、空フィールドの除去
 4. 検証する。エラーが 1 つでもあれば書き込まない（行番号付きで報告する）
-5. PFD なら Overview を生成し（Go のファイルはコード解析の結果も入れる）、対象ファイルのハッシュを記録する
+5. PFD なら Overview を生成し（解析できる言語のファイルはコード解析の結果も入れる。§10.6）、対象ファイルのハッシュを記録する
 6. 保存する: JSON 化 → 圧縮 → 既存と同じならスキップ → `.dirdoc/` が無ければ作成 → アトミックに書き込み
 7. 結果（書き込んだパス、件数、警告）を出力する。`--dry-run` では 6 を行わない
 
@@ -514,12 +514,38 @@ dirdoc [show] [PATH[#ID]] [-f md|json] [--brief | --full] [-r] [--depth N]
 
 ### 10.6 コード解析
 
-- compile と touch は、対象ファイルが Go（拡張子 `.go`）なら標準の `go/parser` で解析し、トップレベルのシンボルを Overview に反映する（§5.3）。構文エラーで解析できないときは何も足さない（compile は失敗しない）。
-- シンボルの ID: 関数と型は名前のまま（`Parse`、`Config`）、メソッドは `型名.メソッド名`（`Pool.Spawn`。ポインタや型パラメータは除く）、var / const は名前ごとに 1 つ。`init` と `_` は数えない。エントリの ID がシンボルの ID と一致すれば、そのエントリに行番号とシグネチャが付く（セクションの違いは問わない）。
-- シグネチャは宣言を 1 行にしたもの。関数は本体を、struct と interface は中身を省き（`type Config struct{ ... }`）、長い値は `{...}` や `...` に縮める。
-- 表示: Overview の各行に `L<行>`、ファイルビューに Undocumented の一覧と各エントリのシグネチャ、エントリビューに定義の位置とシグネチャを出す。
-- `check --undocumented` は、記述のある Go ファイルについてその時点のコードを解析し直し、エントリの無いシンボルを `undocumented` として報告する（既定では報告しない。一部だけ記述するのは普通のことなので）。
-- 他の言語は解析しない（§20.2）。解析は `internal/analyze` の 1 か所にまとめてあり、言語を足すときはそこに解析器を加える。
+- compile と touch は対象ファイルのコードを解析し、シンボルを Overview に反映する（§5.3）。言語は拡張子で決め、拡張子で決まらないファイル（拡張子が無い、または `invoke-rc.d` のように名前に `.` があるスクリプト）は 1 行目の `#!` で決める（`sh`・`bash`・`dash`・`ash`・`ksh` はシェル、`python`・`python3` などは Python、`node` は JavaScript。`env` を挟んでもよい）。
+
+| 言語 | 拡張子 | 解析器 |
+|---|---|---|
+| Go | `.go` | 標準の `go/parser` |
+| Rust | `.rs` | 自前のスキャナ |
+| TypeScript | `.ts` `.tsx` `.mts` `.cts` | 自前のスキャナ（JSX は `.tsx` だけ） |
+| JavaScript | `.js` `.jsx` `.mjs` `.cjs` | 自前のスキャナ（JSX も読む） |
+| Java | `.java` | 自前のスキャナ |
+| Kotlin | `.kt` `.kts` | 自前のスキャナ |
+| Python | `.py` `.pyi` | 自前のスキャナ |
+| シェル | `.sh` `.bash` | 自前のスキャナ（POSIX sh と、bash の `function`・配列・`declare`） |
+
+- Go 以外は言語ごとの小さなスキャナで読む（§20.3）。コメント、文字列（raw 文字列、テンプレートリテラル、テキストブロック、ヒアドキュメント、JSX など）、括弧の入れ子は正しく読み飛ばし、文法は宣言を見つけるのに要る分だけ解釈する。行番号はトークンの位置から取る。見慣れない書き方に出会うと、そのシンボルを落とすことはあっても失敗はしない。Go は構文エラーのときは何も足さない。どちらの場合も compile は失敗しない。
+- 対象のシンボルは、トップレベルの宣言と型のメンバー（入れ子の型を含む）。関数の中は見ない。インスタンスのフィールドは数えない（ほとんど記述されないので、数えると記述の無いシンボルの一覧が埋もれる）。ID は言語ごとに次のとおり。
+
+| 言語 | 型 | 関数 | 変数 |
+|---|---|---|---|
+| Go | `type` | 関数、メソッド（`Pool.Spawn`。ポインタや型パラメータは除く）。`init` は数えない | `var`・`const`（名前ごと。`_` は数えない） |
+| Rust | `struct`・`enum`・`union`・`trait`・`type` | `fn`、`macro_rules!`。固有の impl の項目は `Pool::spawn`、トレイトの項目は `Runner::run`。トレイトの impl とインラインの `mod` の中は見ない | `const`・`static` |
+| TypeScript / JavaScript | `class`・`interface`・`enum`・`type` | `function`、関数を値に持つ `const`・`let`・`var`、クラスのメソッド（`Pool.spawn`、コンストラクタは `Pool.constructor`）と関数を値に持つフィールド | `const`・`let`・`var`、クラスの static フィールド（`Pool.DEFAULT`） |
+| Java | `class`・`interface`・`enum`・`record`・`@interface`（入れ子は `Outer.Inner`） | メソッド（`Pool.submit`）、コンストラクタ（`Pool.Pool`） | static フィールド（インターフェースのフィールドはすべて） |
+| Kotlin | `class`・`interface`・`object`・`typealias` | `fun`（メンバーは `Pool.spawn`、拡張関数は `String.orBlank`、副コンストラクタは `Pool.constructor`） | トップレベルとオブジェクトの `val`・`var`（コンパニオンオブジェクトのメンバーはクラスのもの: `Pool.DEFAULT`） |
+| Python | `class`、`type X = ...` | `def`（メソッドは `Pool.spawn`）、`lambda` を代入した名前 | モジュールでの代入（`if` や `try` の中を含み、`if __name__ == "__main__":` の中は除く）、値のあるクラス属性 |
+| シェル | — | `name() { ... }`、`function name`（if などの中も。関数の中は除く） | トップレベル（関数・if・case・ループの外）での代入と、`export`・`readonly`・`declare`・`typeset` による代入 |
+
+- 同じ ID のシンボルが複数あるとき（オーバーロード、getter と setter、条件ごとの定義）は最初のものだけを数える。ID 規則（§6.1）に合わない名前は数えない。
+- エントリの ID がシンボルの ID と一致すれば、そのエントリに行番号とシグネチャが付く（セクションの違いは問わない）。
+- シグネチャは宣言を 1 行にしたもの。関数は本体を、型は中身を省き（`type Config struct{ ... }`、`pub struct Config { ... }`）、長い値は `{...}` や `...` に縮める。
+- 表示: Overview の各行に `L<行>`、ファイルビューに Undocumented の一覧と各エントリのシグネチャ、エントリビューに定義の位置とシグネチャを出す。コードブロックには言語名（`go`・`rust`・`typescript`・`javascript`・`java`・`kotlin`・`python`・`sh`）を付ける。
+- `check --undocumented` は、記述のあるファイルについてその時点のコードを解析し直し、エントリの無いシンボルを `undocumented` として報告する（既定では報告しない。一部だけ記述するのは普通のことなので）。
+- 解析は `internal/analyze` の 1 か所にまとめてある。言語を足すときは、そこにスキャナを加える。
 
 ## 11. 出力形式
 
@@ -557,10 +583,10 @@ clap の derive でコマンドを定義する。…
 
 > CLIのエントリポイント。引数を解析して各サブコマンドへ委譲する。
 
-- type `Config` `#Config` — コマンドライン引数と設定ファイルから組み立てる実行時設定
-- fn `main()` `#main` — プロセスのエントリポイント
-- fn `check_stdout()` `#check_stdout` — 標準出力がTTYかを判定する
-- var `MAX_AGENTS` `#MAX_AGENTS` — 同時に処理するエージェント数の上限（既定 8）
+- type `Config` `#Config` L8 — コマンドライン引数と設定ファイルから組み立てる実行時設定
+- fn `main()` `#main` L13 — プロセスのエントリポイント
+- fn `check_stdout()` `#check_stdout` L19 — 標準出力がTTYかを判定する
+- var `MAX_AGENTS` `#MAX_AGENTS` L5 — 同時に処理するエージェント数の上限（既定 8）
 
 ## Subdirectories
 
@@ -635,7 +661,7 @@ dirdoc check [PATH] [--strict] [--stale] [--undocumented] [-f json]
 | `unknown-file` | warning | `.dirdoc/` 内の不明なファイル |
 | `template-heading` | warning | 本文に、`[template]` で必須とした見出しが無い（空の本文は対象外。§17） |
 | `stale` | warning | 最後に compile した後で対象ファイルが変わった（`--stale` を付けたときだけ報告する。§10.5） |
-| `undocumented` | warning | 記述のある Go ファイルに、エントリの無いシンボルがある（`--undocumented` を付けたときだけ報告する。§10.6） |
+| `undocumented` | warning | 記述のあるファイル（§10.6 の言語）に、エントリの無いシンボルがある（`--undocumented` を付けたときだけ報告する。§10.6） |
 
 compile と表示でも同じ検証器を使い、それぞれの場面に関係するものだけを報告する。
 
@@ -807,7 +833,7 @@ dirdoc/
 │   ├── container/            # zstd と JSON の判定・読み書き、サイズ上限、アトミック書き込み
 │   ├── source/               # TOML の解析と出力（競合マーカー付きを含む）、Tree 記法のパーサ／プリンタ
 │   ├── compile/              # 正規化、Overview とハッシュの生成、merge
-│   ├── analyze/              # コード解析（Go のトップレベルのシンボル）
+│   ├── analyze/              # コード解析（Go は go/parser、ほかの言語は自前のスキャナ）
 │   ├── config/               # dirdoc.toml の読み込みと既定値
 │   ├── diag/                 # 検証器と診断（コード・重要度・位置）
 │   ├── resolve/              # プロジェクトルートの探索、パスと参照の解決、継承、古さ、被参照
@@ -830,6 +856,7 @@ dirdoc/
 | .gitignore | 自前の実装（gitignore のパターンを正規表現に変換する。依存を増やさないため） |
 | JSON Schema の検証（テストのみ） | `github.com/santhosh-tekuri/jsonschema/v6` |
 | Go のコード解析 | 標準の `go/parser`・`go/printer` |
+| ほかの言語のコード解析 | 自前のスキャナ（依存を増やさず、純 Go のまま。§20.3） |
 | MCP | 自前の小さな実装（JSON-RPC 2.0、tools のみ。依存を増やさないため） |
 
 テスト:
@@ -838,6 +865,7 @@ dirdoc/
 - 往復テスト: export → compile で同じ JSON になること
 - 決定性: 同じ入力から同じ JSON が得られること
 - Tree 記法のパーサは Go 標準のファジングにかける
+- コード解析は言語ごとのテストで確かめ、すべての解析器をファジングにかける（パニックも無限ループもせず、ID と行番号が正しいこと）
 - Phase 2・3 のコマンド（status / touch / rm / edit / mv / merge-driver / mcp / init --git）は `internal/cli` のテストで実際に動かして確かめる。edit はシェルスクリプトのエディタ、init --git は本物の git を使う（無ければ飛ばす）
 
 ## 19. ロードマップ
@@ -859,14 +887,18 @@ dirdoc/
 
 **Phase 3 — 実装済み**
 
-- コード解析による Overview の拡張（行番号、シグネチャ、記述の無いシンボルの検出、`check --undocumented`。§10.6）。Go のコードは標準の `go/parser` で解析する。他の言語（tree-sitter）は見送った（§20.2）
+- コード解析による Overview の拡張（行番号、シグネチャ、記述の無いシンボルの検出、`check --undocumented`。§10.6）。Go のコードは標準の `go/parser` で解析する（ほかの言語は次の段階で加えた）
 - git のマージドライバ（ID 単位の 3-way マージ。§16）
 - MCP サーバーモード（`dirdoc mcp`。show / search / compile に加え、status / check / export / touch / rm / mv をツールとして公開する。§14）
 - リネームの支援（`dirdoc mv` で PFD の移動と参照・Tree の書き換え）、被参照（バックリンク）の表示（§10.4）
 
+**解析する言語の追加 — 実装済み**
+
+- Rust、TypeScript、JavaScript、Java、Kotlin、Python、シェル（POSIX sh と bash の一部）。言語ごとの自前のスキャナで読む（§10.6、§20.3）
+
 **今後の候補**
 
-- tree-sitter による他の言語の解析（cgo を使わずに済む方法が見つかったら）
+- ほかの言語の解析（C / C++、C#、Ruby、PHP、Swift など）と、今は見ていない入れ子（Rust のインラインの `mod`、TypeScript の `namespace`）
 - 被参照の索引（大きなプロジェクトで表示のたびに全文書を走査しないように）
 
 ## 20. 決定の記録
@@ -894,10 +926,21 @@ v0.1 で未決だった事項は、2026-10-25 にすべて推奨案で確定し�
 | 8 | 本文テンプレート | 本文全体のひな形ではなく、種類（dsd・type・function）ごとの「必須の見出し」だけを `[template]` に書く。export のひな形の例に入れ、compile と check が `template-heading` で警告する（エラーにはしない）。本文が空のエントリは対象外。書き方そのものは引き続きプロジェクトが決める（§1 の非目的） |
 | 9 | 古さの注意を出す場所 | ファイルビューに加えてエントリビューにも出す（関数 1 つだけを読むエージェントにも伝わるように）。ディレクトリビューは `(stale)` の印だけ |
 | 10 | ハッシュを更新する操作 | compile（`--merge` を含む）と touch だけ。rm とマージドライバは記述しか変えず、対象ファイルを確かめていないので、ハッシュはそのまま残す。touch はコード解析の結果（行番号など）も更新する |
-| 11 | コード解析の対象言語 | Go だけ（`go/parser`）。tree-sitter は cgo か、WASM ランタイムと各言語の文法の同梱が必要で、「純 Go の単一バイナリ」（§0）に反するので見送った。正規表現による簡易解析は、誤った行番号や「記述の無いシンボル」を出しうるので採らない。解析器は `internal/analyze` に差し替えられる形でまとめた |
+| 11 | コード解析の対象言語 | Go だけ（`go/parser`）。tree-sitter は cgo か、WASM ランタイムと各言語の文法の同梱が必要で、「純 Go の単一バイナリ」（§0）に反するので見送った。正規表現による簡易解析は、誤った行番号や「記述の無いシンボル」を出しうるので採らない。解析器は `internal/analyze` に差し替えられる形でまとめた（→ 2026-10-27 に #18 で改めた） |
 | 12 | 記述の無いシンボル | compile 時に Overview の `undocumented` に保存してファイルビューに出す。`check` は既定では報告せず、`--undocumented` のときだけその時点のコードで判定する（一部だけ記述するのが普通なので） |
 | 13 | 被参照の求め方 | 索引は作らず、表示のたびにプロジェクトの全文書を走査する（check・search と同じ規模）。ディレクトリビューには出さない |
 | 14 | mv が動かすもの | ファイル（ディレクトリ）自体も移動する。既に移動済みなら記述だけを追従させる。参照は意味が変わるものだけを書き換え、綴りの流儀（相対・ルートから、末尾の `/`、表示名）を保つ。Tree は畳まれたディレクトリを勝手に展開しない |
 | 15 | マージの衝突の表し方 | 圧縮ファイルには競合マーカーを入れられないので、衝突したら `.dirdoc_*` を TOML の元ファイル（競合マーカー付き）に置き換える。解消は git のテキストの衝突と同じ手順で、最後に compile で保存し直す。マージ結果の検証エラーも同じ扱いにする |
 | 16 | MCP のツール | 設計の show / search / compile に、エージェントの作業に必要な status / check / export / touch / rm / mv を足した 9 つ。CLI と同じコマンドを実行して結果を返すので、出力も検証も CLI と一致する。パスは起動したプロジェクトの中に限る |
 | 17 | rm の安全策 | 同じ文書に新しいエラーを生む削除は拒否する（既にあったエラーでは拒否しない）。他の文書からの参照は警告だけにする（相手の文書を勝手に書き換えない） |
+
+### 20.3 解析する言語の追加で決めたこと
+
+2026-10-27、Rust・TypeScript・JavaScript・Java・Kotlin・Python・シェルの解析を加えるにあたって決めた。
+
+| # | 論点 | 決定 |
+|---|---|---|
+| 18 | Go 以外の解析器 | 言語ごとに自前の小さなスキャナを書く（#11 を改めた）。tree-sitter を見送った理由（cgo、または WASM ランタイムと文法の同梱）は変わらないので、純 Go のまま依存も増やさない。#11 が退けた正規表現と違い、字句解析はきちんと行う。コメント（入れ子を含む）、文字列（raw 文字列、テンプレートリテラルの `${...}`、テキストブロック、ヒアドキュメント、JSX など）、括弧の入れ子を読み飛ばすので、行番号はトークンの位置から正確に取れ、コメントや文字列の中をシンボルと見誤らない。構文は宣言を見つけるのに要る分だけ解釈し、読めない書き方ではそのシンボルを落とすことはあっても失敗はしない。これをファジングで確かめる。実装時に、Python の標準ライブラリ（672 ファイル）を `ast` モジュールの結果と、node_modules の JavaScript / TypeScript（4,933 ファイル。圧縮済みのバンドルを含む）を TypeScript のコンパイラの結果と突き合わせ、ID・種類・行がすべて一致することを確かめた |
+| 19 | 解析の範囲 | トップレベルの宣言と型のメンバー（入れ子の型を含む）。関数の中、Rust のトレイトの impl とインラインの `mod`、TypeScript の `namespace` と `declare module` の中は見ない。インスタンスのフィールド（Kotlin のクラスのプロパティを含む）は数えず、static なフィールドなど型の外から使うものだけを数える（関数を値に持つ TypeScript / JavaScript のフィールドはメソッドとして数える）。ほとんど記述されないものが「記述の無いシンボル」に並ぶと、本当に記述したいものが埋もれるため |
+| 20 | メンバーの ID | 各言語の書き方に合わせる。Rust は `Pool::spawn`（#1 の書き方と同じ）、ほかは `Pool.spawn`。Java のコンストラクタは `Pool.Pool`、TypeScript / JavaScript のコンストラクタと Kotlin の副コンストラクタは `Pool.constructor`。同じ ID が複数あるとき（オーバーロード、getter と setter）は最初の 1 つだけを数え、エントリはまとめて 1 つ書く |
+| 21 | 言語の判定 | 拡張子で決め、拡張子で決まらないファイルは `#!` の行で決める（`check --undocumented` は記述のあるファイルをすべて読む。`--stale` がハッシュのために読むのと同じ量）。JSX は `.js`・`.jsx`・`.tsx` で読む。`.ts` では `<T>x` が型アサーションなので読まない |

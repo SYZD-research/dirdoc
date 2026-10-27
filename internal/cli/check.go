@@ -39,7 +39,7 @@ func (a *App) checkCmd() *cobra.Command {
 	}
 	c.Flags().BoolVar(&o.strict, "strict", false, "treat warnings as errors (for CI)")
 	c.Flags().BoolVar(&o.stale, "stale", false, "also report files that changed since their PFD was compiled")
-	c.Flags().BoolVar(&o.undocumented, "undocumented", false, "also report symbols of documented Go files that have no entry")
+	c.Flags().BoolVar(&o.undocumented, "undocumented", false, "also report symbols of documented source files that have no entry")
 	c.Flags().StringVarP(&o.format, "format", "f", "text", "output format: text or json")
 	return c
 }

@@ -200,7 +200,7 @@ func (a *App) mcpServer() (*mcp.Server, error) {
 		},
 		{
 			Name: "check", Title: "Check documentation", ReadOnly: true, Idempotent: true,
-			Description: "Validate the documentation below path: broken references, duplicate ids, trees that no longer match the files, and more. stale also reports files changed since their description; undocumented also reports Go symbols without an entry.",
+			Description: "Validate the documentation below path: broken references, duplicate ids, trees that no longer match the files, and more. stale also reports files changed since their description; undocumented also reports the symbols of source files (Go, Rust, TypeScript, JavaScript, Java, Kotlin, Python, shell) that have no entry.",
 			InputSchema: json.RawMessage(`{"type":"object","properties":{
 "path":{"type":"string","description":"Default: the whole project."},
 "strict":{"type":"boolean","description":"Fail on warnings too."},

@@ -272,7 +272,7 @@ func (v *Validator) code(l *List, file, docLoc string, p *model.PFD) {
 				"(update the document, or run `dirdoc touch` on the file if it is still accurate)")
 		}
 	}
-	if !v.Undocumented || analyze.Language(file) == "" {
+	if !v.Undocumented {
 		return
 	}
 	src, err := os.ReadFile(file)

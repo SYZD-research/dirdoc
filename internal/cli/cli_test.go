@@ -28,16 +28,59 @@ var fixtureFiles = map[string]string{
 	".gitignore":          "target/\n",
 	"Cargo.toml":          "",
 	"docs/notes.md":       "",
-	"src/main.rs":         "",
+	"src/main.rs":         mainRs,
 	"src/cli/args.rs":     "",
 	"src/cli/commands.rs": "",
-	"src/agent/pool.rs":   "",
+	"src/agent/pool.rs":   poolRs,
 	"src/agent/runner.rs": "",
 	"target/debug/myapp":  "",
 	"tools/release.go":    releaseGo,
 }
 
-// releaseGo is the one Go file of the fixture, for code analysis.
+// mainRs and poolRs are the Rust files of the fixture with content, for code analysis: main.rs has
+// an entry for each symbol, pool.rs only for spawn.
+const mainRs = `//! myapp: runs agents from the command line.
+use std::io::IsTerminal;
+
+/// Upper bound of the agents run at once.
+pub const MAX_AGENTS: usize = 8;
+
+/// Run-time settings, built from the arguments and the config file.
+pub struct Config {
+    pub agents: usize,
+    pub color: bool,
+}
+
+fn main() {
+    let config = Config { agents: MAX_AGENTS, color: check_stdout() };
+    agent::pool::spawn(config.agents);
+}
+
+/// Tells whether stdout is a terminal.
+fn check_stdout() -> bool {
+    std::io::stdout().is_terminal()
+}
+`
+
+const poolRs = `//! The worker pool.
+
+/// Starts n workers, at most MAX_AGENTS.
+pub fn spawn(n: usize) -> Vec<Worker> {
+    (0..n.min(crate::MAX_AGENTS)).map(Worker::new).collect()
+}
+
+pub struct Worker {
+    id: usize,
+}
+
+impl Worker {
+    fn new(id: usize) -> Self {
+        Worker { id }
+    }
+}
+`
+
+// releaseGo is the Go file of the fixture, for code analysis.
 const releaseGo = `// Command release prints the archive names of a myapp release.
 package main
 

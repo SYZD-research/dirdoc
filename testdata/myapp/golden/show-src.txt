@@ -33,10 +33,10 @@ clap の derive でコマンドを定義する。
 
 > CLIのエントリポイント。引数を解析して各サブコマンドへ委譲する。
 
-- type `Config` `#Config` — コマンドライン引数と設定ファイルから組み立てる実行時設定
-- fn `main()` `#main` — プロセスのエントリポイント
-- fn `check_stdout()` `#check_stdout` — 標準出力がTTYかを判定する
-- var `MAX_AGENTS` `#MAX_AGENTS` — 同時に処理するエージェント数の上限（既定 8）
+- type `Config` `#Config` L8 — コマンドライン引数と設定ファイルから組み立てる実行時設定
+- fn `main()` `#main` L13 — プロセスのエントリポイント
+- fn `check_stdout()` `#check_stdout` L19 — 標準出力がTTYかを判定する
+- var `MAX_AGENTS` `#MAX_AGENTS` L5 — 同時に処理するエージェント数の上限（既定 8）
 
 ## Subdirectories
 

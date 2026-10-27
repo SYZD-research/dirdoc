@@ -29,6 +29,7 @@ exit: 0
   ```
 
 - 全体を書き直す: `dirdoc export <target> > /tmp/x.toml` → 編集 → `dirdoc compile <target> /tmp/x.toml`。説明がまだ無いときは、export がひな形を出す。
+- メソッドはコード解析と同じく `Type.method()`（Rust は `Type::method()`）と名付ける。解析できる言語（Go・Rust・TypeScript・JavaScript・Java・Kotlin・Python・シェル）では、`dirdoc <file>` に各エントリの行番号とシグネチャが出て、エントリの無いシンボルが Undocumented に並ぶ。
 - ファイルを変えたが説明を直す必要が無いときは、`dirdoc touch <file>` で stale の表示を消す。
 - 説明のあるファイルの名前変更・移動は `dirdoc mv <old> <new>` で行う（説明が一緒に移り、参照も書き換わる）。説明を消すときは `dirdoc rm <path>` か `dirdoc rm '<file>#<id>'`。
 - 最後に `dirdoc check` を通す。
