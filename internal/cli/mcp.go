@@ -330,5 +330,5 @@ func (a *App) mcpServer() (*mcp.Server, error) {
 			},
 		},
 	}
-	return &mcp.Server{Name: "dirdoc", Version: Version, Instructions: mcpInstructions, Tools: tools}, nil
+	return &mcp.Server{Name: "dirdoc", Version: version(), Instructions: mcpInstructions, Tools: tools}, nil
 }
