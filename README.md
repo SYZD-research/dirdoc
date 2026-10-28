@@ -8,6 +8,8 @@ AI エージェント向けに、ディレクトリ（DSD）とファイル（PF
 
 ## インストール
 
+[Releases](https://github.com/SYZD-research/dirdoc/releases) から、使うプラットフォームのアーカイブ（Linux・macOS・Windows・各種 BSD など）をダウンロードして展開し、`dirdoc` を PATH の通った場所に置きます。Go があれば次でも入れられます。
+
 ```bash
 go install github.com/SYZD-research/dirdoc/cmd/dirdoc@latest
 ```
@@ -62,5 +64,16 @@ go test ./internal/cli -update    # 出力を変えたときにゴールデン�
 go test ./internal/source -run '^$' -fuzz FuzzParseTree -fuzztime 60s
 go test ./internal/analyze -run '^$' -fuzz FuzzFile -fuzztime 60s
 ```
+
+### リリース
+
+`v` で始まるタグを push すると、GitHub Actions（`.github/workflows/release.yml`）がテストのあと、Go が対応するほぼすべてのプラットフォーム向けにビルドし、アーカイブとチェックサムを Release に載せます。`-` を含むタグ（`v0.3.0-rc.1` など）はプレリリースになります。
+
+```bash
+git tag v0.3.0
+git push origin v0.3.0
+```
+
+ビルドしないのは、cgo が要る android（386・amd64・arm）と ios、JavaScript のホストが要る js/wasm だけです。
 
 このリポジトリ自体も dirdoc で記述しています。`dirdoc`、`dirdoc internal/`、`dirdoc internal/model/id.go` などで読めます。

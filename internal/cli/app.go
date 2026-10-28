@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -15,8 +16,22 @@ import (
 	"github.com/SYZD-research/dirdoc/internal/resolve"
 )
 
-// Version is the dirdoc version.
-const Version = "0.2.0"
+// Version is the dirdoc version. Release builds set it with
+// -ldflags "-X github.com/SYZD-research/dirdoc/internal/cli.Version=1.2.0"; when it is empty,
+// version reads the module version that go install and go build record.
+var Version string
+
+// version returns Version, or else the recorded module version without its "v" (1.2.0 after
+// go install ...@v1.2.0, a pseudo-version for a build between tags), or else "devel".
+func version() string {
+	if Version != "" {
+		return Version
+	}
+	if info, ok := debug.ReadBuildInfo(); ok && strings.HasPrefix(info.Main.Version, "v") {
+		return strings.TrimPrefix(info.Main.Version, "v")
+	}
+	return "devel"
+}
 
 // Exit codes (design §14).
 const (
@@ -113,7 +128,7 @@ Run 'dirdoc guide' for the workflow to put in AGENTS.md or CLAUDE.md.`,
 		Args:          usageArgs(cobra.MaximumNArgs(1)),
 		SilenceUsage:  true,
 		SilenceErrors: true,
-		Version:       Version,
+		Version:       version(),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return a.show(cmd, args, &opts)
 		},

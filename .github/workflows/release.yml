@@ -1,0 +1,92 @@
+# Builds dirdoc for the platforms Go supports and publishes the archives as a GitHub release when a
+# tag such as v1.2.0 is pushed. A tag with a hyphen, such as v1.2.0-rc.1, makes a pre-release.
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash # with -o pipefail
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Test
+        run: |
+          go vet ./...
+          go test ./...
+
+      - name: Build
+        env:
+          # The android and ios ports left out need cgo (an NDK or Xcode toolchain), and js/wasm
+          # runs only inside a JavaScript host. Every other platform of `go tool dist list` is built.
+          SKIP: android/386 android/amd64 android/arm ios/amd64 ios/arm64 js/wasm
+          # The most compatible variants: ARMv6 and later, MIPS without a floating-point unit.
+          GOARM: "6"
+          GOMIPS: softfloat
+          GOMIPS64: softfloat
+          CGO_ENABLED: "0"
+        run: |
+          version=${GITHUB_REF_NAME#v}
+          dist=$RUNNER_TEMP/dist
+          work=$RUNNER_TEMP/work # outside the checkout, so that the builds see a clean work tree
+          mkdir -p "$dist" "$work"
+          # Archives get the time of the tagged commit, so that the same tag gives the same files.
+          epoch=$(git log -1 --format=%ct)
+          for target in $(go tool dist list); do
+            case " $SKIP " in *" $target "*) continue ;; esac
+            goos=${target%/*} goarch=${target#*/}
+            name=dirdoc_${version}_${goos}_${goarch}
+            exe=dirdoc
+            case $goos/$goarch in windows/*) exe=dirdoc.exe ;; */wasm) exe=dirdoc.wasm ;; esac
+            echo "::group::$target"
+            mkdir -p "$work/$name"
+            GOOS=$goos GOARCH=$goarch go build -trimpath \
+              -ldflags "-s -w -X github.com/SYZD-research/dirdoc/internal/cli.Version=$version" \
+              -o "$work/$name/$exe" ./cmd/dirdoc
+            cp LICENSE README.md "$work/$name/"
+            touch -d "@$epoch" "$work/$name" "$work/$name"/*
+            if [ "$goos" = windows ]; then
+              (cd "$work" && find "$name" | LC_ALL=C sort | TZ=UTC zip -qX "$dist/$name.zip" -@)
+            else
+              tar -C "$work" --sort=name --owner=0 --group=0 --numeric-owner -cf - "$name" | gzip -9n > "$dist/$name.tar.gz"
+            fi
+            ls -l "$dist/$name".*
+            echo "::endgroup::"
+          done
+          got=$("$work/dirdoc_${version}_linux_amd64/dirdoc" --version)
+          if [ "$got" != "dirdoc version $version" ]; then
+            echo "::error::the linux/amd64 build reports \"$got\", not version $version"
+            exit 1
+          fi
+          cd "$dist" && sha256sum -- * > "dirdoc_${version}_checksums.txt"
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          tag=$GITHUB_REF_NAME
+          if gh release view "$tag" > /dev/null 2>&1; then
+            # A release made on GitHub for this tag: add the archives to it.
+            gh release upload "$tag" "$RUNNER_TEMP"/dist/* --clobber
+          else
+            prerelease=
+            case $tag in *-*) prerelease=--prerelease ;; esac
+            gh release create "$tag" "$RUNNER_TEMP"/dist/* --verify-tag --title "$tag" --generate-notes $prerelease
+          fi

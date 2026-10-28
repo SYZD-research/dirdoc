@@ -825,6 +825,7 @@ dsd = ["Usage"]
 
 ```text
 dirdoc/
+├── .github/workflows/        # release.yml: タグの push でクロスビルドし、Release を作る
 ├── go.mod
 ├── cmd/dirdoc/main.go        # エントリポイント
 ├── internal/
@@ -867,6 +868,12 @@ dirdoc/
 - Tree 記法のパーサは Go 標準のファジングにかける
 - コード解析は言語ごとのテストで確かめ、すべての解析器をファジングにかける（パニックも無限ループもせず、ID と行番号が正しいこと）
 - Phase 2・3 のコマンド（status / touch / rm / edit / mv / merge-driver / mcp / init --git）は `internal/cli` のテストで実際に動かして確かめる。edit はシェルスクリプトのエディタ、init --git は本物の git を使う（無ければ飛ばす）
+
+リリース:
+
+- `v` で始まるタグ（`v1.2.0`）を push すると、`.github/workflows/release.yml` がテストのあと、`go tool dist list` のプラットフォームのうち、cgo が要るもの（android の 386・amd64・arm と ios）と JavaScript のホストが要る js/wasm を除くすべてに向けて `CGO_ENABLED=0` でビルドする。ARM は ARMv6 以降、MIPS は浮動小数点ユニットの無いものでも動くようにビルドする
+- アーカイブ（Windows は zip、ほかは tar.gz。README と LICENSE を同梱）と SHA-256 のチェックサムを GitHub の Release に載せる。`-` を含むタグ（`v1.2.0-rc.1`）はプレリリースにする。アーカイブの時刻はタグのコミットの時刻にそろえ、同じタグからは同じファイルができる
+- バージョンはタグから `-ldflags -X` で埋め込む。`go install` で入れたものは、Go が記録するモジュールのバージョン（`go install ...@v1.2.0` なら 1.2.0）を表示する
 
 ## 19. ロードマップ
 
