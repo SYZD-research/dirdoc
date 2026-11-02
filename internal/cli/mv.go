@@ -8,10 +8,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/SYZD-research/dirdoc/internal/container"
-	"github.com/SYZD-research/dirdoc/internal/model"
 	"github.com/SYZD-research/dirdoc/internal/move"
 	"github.com/SYZD-research/dirdoc/internal/resolve"
+	"github.com/SYZD-research/dirdoc/internal/store"
 )
 
 func (a *App) mvCmd() *cobra.Command {
@@ -101,14 +100,7 @@ func (a *App) mv(srcArg, dstArg string, dryRun bool) error {
 			fmt.Fprintln(a.Stdout, "would update "+line)
 			continue
 		}
-		var doc any = w.DSD
-		if w.PFD != nil {
-			doc = w.PFD
-		}
-		js, err := model.Marshal(doc)
-		if err == nil {
-			_, err = container.WriteFile(w.Path, js, p.Config.Compress(), container.Level(p.Config.Storage.Level))
-		}
+		_, err := store.WriteFile(w.Path, w.DSD, w.PFD, store.Configured(p.Config))
 		if err == nil && w.From != "" {
 			err = os.Remove(w.From)
 			os.Remove(filepath.Dir(w.From)) // only succeeds when .dirdoc/ is now empty

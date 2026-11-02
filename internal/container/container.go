@@ -1,4 +1,5 @@
-// Package container reads and writes the bytes of .dirdoc_* files: JSON, zstd-compressed by default.
+// Package container encodes the JSON of .dirdoc_* files: zstd-compressed or indented. Package store
+// adds the TOML format and writes the files.
 package container
 
 import (
@@ -6,8 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"sync"
 
 	"github.com/klauspost/compress/zstd"
@@ -107,59 +106,4 @@ func Encode(js []byte, compress bool, level Level) ([]byte, error) {
 	}
 	defer enc.Close()
 	return enc.EncodeAll(js, nil), nil
-}
-
-// ReadFile reads a .dirdoc_* file and returns its JSON.
-func ReadFile(path string) (js []byte, compressed bool, err error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, false, err
-	}
-	return Decode(data)
-}
-
-// WriteFile stores js at path. It does nothing and returns false when the file already holds the
-// same JSON in the same container, so that recompiling never produces a spurious git diff.
-// The write goes through a temporary file and a rename, so a crash cannot leave a broken file.
-func WriteFile(path string, js []byte, compress bool, level Level) (bool, error) {
-	if old, err := os.ReadFile(path); err == nil {
-		if oldJS, oldCompressed, err := Decode(old); err == nil && oldCompressed == compress && sameJSON(oldJS, js) {
-			return false, nil
-		}
-	}
-	data, err := Encode(js, compress, level)
-	if err != nil {
-		return false, err
-	}
-	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return false, err
-	}
-	tmp, err := os.CreateTemp(dir, ".tmp-*")
-	if err != nil {
-		return false, err
-	}
-	defer os.Remove(tmp.Name())
-	if _, err := tmp.Write(data); err != nil {
-		tmp.Close()
-		return false, err
-	}
-	if err := tmp.Close(); err != nil {
-		return false, err
-	}
-	if err := os.Chmod(tmp.Name(), 0o644); err != nil {
-		return false, err
-	}
-	if err := os.Rename(tmp.Name(), path); err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
-func sameJSON(a, b []byte) bool {
-	var ca, cb bytes.Buffer
-	if json.Compact(&ca, a) != nil || json.Compact(&cb, b) != nil {
-		return false
-	}
-	return bytes.Equal(ca.Bytes(), cb.Bytes())
 }

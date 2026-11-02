@@ -169,6 +169,10 @@ func (a *App) output(format string, v any, markdown func() string) error {
 		_, err = a.Stdout.Write(b)
 		return err
 	}
-	_, err := fmt.Fprint(a.Stdout, markdown())
+	text := markdown()
+	if a.color {
+		text = render.Terminal(text)
+	}
+	_, err := fmt.Fprint(a.Stdout, text)
 	return err
 }

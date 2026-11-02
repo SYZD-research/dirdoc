@@ -9,11 +9,12 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/SYZD-research/dirdoc/internal/compile"
-	"github.com/SYZD-research/dirdoc/internal/container"
 	"github.com/SYZD-research/dirdoc/internal/diag"
 	"github.com/SYZD-research/dirdoc/internal/model"
 	"github.com/SYZD-research/dirdoc/internal/resolve"
 	"github.com/SYZD-research/dirdoc/internal/source"
+	"github.com/SYZD-research/dirdoc/internal/store"
+	"github.com/SYZD-research/dirdoc/internal/validate"
 )
 
 func (a *App) compileCmd() *cobra.Command {
@@ -88,8 +89,9 @@ func (a *App) compile(target, srcArg string, merge, dryRun, strict bool) error {
 		return exitf(exitError, "nothing written: %s is not valid", srcName)
 	}
 	// Keep going after key errors so that one run reports every problem.
-	val := diag.Validator{P: p, File: srcName, FS: true}
-	var js []byte
+	val := validate.Validator{P: p, File: srcName, FS: true}
+	var d *model.DSD
+	var pf *model.PFD
 	var outPath, counts string
 	if kind == model.KindDSD {
 		var base *model.DSD
@@ -98,12 +100,13 @@ func (a *App) compile(target, srcArg string, merge, dryRun, strict bool) error {
 				return exitf(exitError, "cannot merge into the stored DSD: %v", err)
 			}
 		}
-		d, loc, l := compile.DSD(doc, base, merge)
+		var loc validate.Locator
+		var l diag.List
+		d, loc, l = compile.DSD(doc, base, merge)
 		all = append(all, l...)
 		p.SetDSD(abs, d)
 		val.Loc = loc
 		all = append(all, val.DSD(abs, d)...)
-		js, err = model.Marshal(d)
 		outPath = resolve.DSDFile(abs)
 		counts = fmt.Sprintf("dsd: %d, tree nodes: %d", len(d.Entries), countNodes(d.Tree))
 	} else {
@@ -113,7 +116,9 @@ func (a *App) compile(target, srcArg string, merge, dryRun, strict bool) error {
 				return exitf(exitError, "cannot merge into the stored PFD: %v", err)
 			}
 		}
-		pf, loc, l := compile.PFD(doc, base, filepath.Base(abs), merge)
+		var loc validate.Locator
+		var l diag.List
+		pf, loc, l = compile.PFD(doc, base, filepath.Base(abs), merge)
 		var content []byte
 		if content, err = os.ReadFile(abs); err != nil {
 			return exitf(exitError, "%v", err)
@@ -123,12 +128,8 @@ func (a *App) compile(target, srcArg string, merge, dryRun, strict bool) error {
 		p.SetPFD(abs, pf)
 		val.Loc = loc
 		all = append(all, val.PFD(abs, pf)...)
-		js, err = model.Marshal(pf)
 		outPath = resolve.PFDFile(abs)
 		counts = fmt.Sprintf("types: %d, functions: %d, variables: %d", len(pf.Types), len(pf.Functions), len(pf.Variables))
-	}
-	if err != nil {
-		return exitf(exitError, "%v", err)
 	}
 	all.SortByLine()
 	a.printDiags(a.Stderr, all)
@@ -141,10 +142,13 @@ func (a *App) compile(target, srcArg string, merge, dryRun, strict bool) error {
 		return exitf(exitError, "nothing written: %s", plural(e, "error"))
 	}
 	if dryRun {
+		if _, err := store.Encode(d, pf, store.Configured(p.Config)); err != nil {
+			return exitf(exitError, "%v", err)
+		}
 		fmt.Fprintf(a.Stdout, "dry run: %s is valid (%s)\n", rel, counts)
 		return nil
 	}
-	written, err := container.WriteFile(outPath, js, p.Config.Compress(), container.Level(p.Config.Storage.Level))
+	written, err := store.WriteFile(outPath, d, pf, store.Configured(p.Config))
 	if err != nil {
 		return exitf(exitError, "%v", err)
 	}

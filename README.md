@@ -2,9 +2,9 @@
 
 Directory Document
 
-AI エージェント向けに、ディレクトリ（DSD）とファイル（PFD）の説明を各ディレクトリの `.dirdoc/` に保存し、`dirdoc [PATH]` で Markdown または JSON として表示する CLI です。保存形式は JSON を zstd で圧縮したものです。
+AI エージェント向けに、ディレクトリ（DSD）とファイル（PFD）の説明を各ディレクトリの `.dirdoc/` に保存し、`dirdoc [PATH]` で Markdown または JSON として表示する CLI です。保存形式は既定では JSON を zstd で圧縮したもので、JSON や TOML（PR の画面でも差分が読める）も選べます。
 
-仕様は [docs/DESIGN.md](docs/DESIGN.md) を参照してください。設計書のロードマップの Phase 1〜3 を実装しています。
+仕様は [docs/DESIGN.md](docs/DESIGN.md) を参照してください。設計書のロードマップの Phase 1〜4 を実装しています。
 
 ## インストール
 
@@ -25,13 +25,14 @@ dirdoc compile src/ /tmp/src.toml   # 検証して src/.dirdoc/.dirdoc_dsd に�
 dirdoc src/                         # ディレクトリの概要・ツリー・各ファイルの目次
 dirdoc src/main.rs                  # ファイルの詳細
 dirdoc 'src/main.rs#main'           # 1 つの関数
-dirdoc search tty                   # 全文検索（圧縮されているので grep は使えない）
+dirdoc search tty                   # 全文検索（.dirdoc/ は圧縮されていることがあるので grep ではなくこれを使う）
 dirdoc check                        # 検証（CI では --strict。--stale で古い記述、--undocumented で記述の無いシンボルも）
 dirdoc status                       # どのディレクトリ・ファイルに説明があるか（stale・none なども）
 dirdoc touch src/main.rs            # コードは変えたが説明はそのままでよいとき、stale の表示を消す
 dirdoc edit src/main.rs             # $EDITOR で編集して compile（人間向け）
 dirdoc rm 'src/main.rs#old'         # エントリ（PATH だけなら文書全体）を消す
 dirdoc mv src/main.rs src/app.rs    # ファイルを説明ごと移動し、参照を書き換える
+dirdoc convert --to toml            # 保存形式を一括で変換する（--to を省くと dirdoc.toml の形式にそろえる）
 dirdoc guide                        # AGENTS.md / CLAUDE.md に貼るエージェント向けの手順
 ```
 
@@ -46,6 +47,26 @@ name = "check_stdout()"
 summary = "標準出力がTTYかを判定する"
 EOF
 ```
+
+### 保存形式
+
+`dirdoc.toml` の `[storage] format` で、`zstd`（既定。JSON を圧縮したもの）・`json`・`toml` から選びます。`toml` は `export` が出す TOML に生成した情報を足したもので、GitHub などの PR の画面でも説明の差分がそのまま読めます。どの形式も読めるので混在してもかまいませんが、形式を変えたら `dirdoc convert` で既存のファイルをそろえてください（`dirdoc check` は形式の違うファイルを `storage-format` として知らせます）。
+
+```toml
+[storage]
+format = "toml"
+```
+
+### 端末での表示
+
+標準出力が端末のとき、表示・`search`・`status`・`check`・`export`・`cat`・`guide` の出力は `man` のようにページャー（`$DIRDOC_PAGER`、`$PAGER`、どちらも無ければ `less`）で開きます。1 画面に収まる出力はそのまま表示します（`LESS` を設定していなければ `LESS=FRX` を渡します）。表示と `guide`、`search`・`check`・`status` には色も付きます（見出しは太字、参照は青、コードは緑など。文字そのものは変わりません）。
+
+```bash
+dirdoc src/ --no-pager              # ページャーを使わない（DIRDOC_PAGER=cat でも同じ）
+dirdoc src/ --color=never           # 色を付けない（NO_COLOR を設定しても同じ。--color=always でパイプにも付ける）
+```
+
+パイプやファイルへの出力は変わりません。エージェントが端末（PTY）の上でコマンドを実行する環境では、ページャーが入力を待って止まらないように `DIRDOC_PAGER=cat` を設定してください。
 
 ### git と MCP
 

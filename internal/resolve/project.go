@@ -3,7 +3,6 @@
 package resolve
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -13,8 +12,8 @@ import (
 	"strings"
 
 	"github.com/SYZD-research/dirdoc/internal/config"
-	"github.com/SYZD-research/dirdoc/internal/container"
 	"github.com/SYZD-research/dirdoc/internal/model"
+	"github.com/SYZD-research/dirdoc/internal/store"
 	"github.com/SYZD-research/dirdoc/internal/walk"
 )
 
@@ -31,13 +30,15 @@ type Project struct {
 }
 
 type dsdResult struct {
-	doc *model.DSD
-	err error
+	doc    *model.DSD
+	format store.Format // "" when the document was not read from a file
+	err    error
 }
 
 type pfdResult struct {
-	doc *model.PFD
-	err error
+	doc    *model.PFD
+	format store.Format
+	err    error
 }
 
 // DocError reports a stored document that cannot be read.
@@ -108,43 +109,19 @@ func InsideDirdoc(abs string) bool {
 	return false
 }
 
-// ErrSource reports a .dirdoc_* file that holds a TOML source instead of a stored document, as the
-// merge driver leaves one it could not merge.
-var ErrSource = errors.New("the file holds a TOML source, not a stored document: resolve the merge " +
-	"conflict in it, then store it with `dirdoc compile TARGET FILE`")
-
-// LoadFile decodes any .dirdoc_* file.
-func LoadFile(path string) (model.Kind, *model.DSD, *model.PFD, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return 0, nil, nil, &DocError{Path: path, Err: err}
-	}
-	js, _, err := container.Decode(data)
-	if errors.Is(err, container.ErrUnknownFormat) && bytes.HasPrefix(data, []byte("# dirdoc ")) {
-		err = ErrSource
-	}
-	if err != nil {
-		return 0, nil, nil, &DocError{Path: path, Err: err}
-	}
-	kind, d, p, err := model.Decode(js)
-	if err != nil {
-		return 0, nil, nil, &DocError{Path: path, Err: err}
-	}
-	return kind, d, p, nil
-}
-
-func loadKind(path string, want model.Kind) (*model.DSD, *model.PFD, error) {
+// loadKind reads the .dirdoc_* file at path, in any storage format. It returns nil when there is none.
+func loadKind(path string, want model.Kind) (*store.File, error) {
 	if _, err := os.Stat(path); errors.Is(err, fs.ErrNotExist) {
-		return nil, nil, nil
+		return nil, nil
 	}
-	kind, d, p, err := LoadFile(path)
+	f, err := store.ReadFile(path)
 	if err != nil {
-		return nil, nil, err
+		return nil, &DocError{Path: path, Err: err}
 	}
-	if kind != want {
-		return nil, nil, &DocError{Path: path, Err: fmt.Errorf("expected a %s, found a %s", want, kind)}
+	if f.Kind != want {
+		return nil, &DocError{Path: path, Err: fmt.Errorf("expected a %s, found a %s", want, f.Kind)}
 	}
-	return d, p, nil
+	return f, nil
 }
 
 // DSD returns the stored DSD of dir, or nil when there is none.
@@ -153,9 +130,13 @@ func (p *Project) DSD(dir string) (*model.DSD, error) {
 	if r, ok := p.dsds[dir]; ok {
 		return r.doc, r.err
 	}
-	d, _, err := loadKind(DSDFile(dir), model.KindDSD)
-	p.dsds[dir] = dsdResult{doc: d, err: err}
-	return d, err
+	f, err := loadKind(DSDFile(dir), model.KindDSD)
+	r := dsdResult{err: err}
+	if f != nil {
+		r.doc, r.format = f.DSD, f.Format
+	}
+	p.dsds[dir] = r
+	return r.doc, r.err
 }
 
 // PFD returns the stored PFD of file, or nil when there is none.
@@ -164,9 +145,24 @@ func (p *Project) PFD(file string) (*model.PFD, error) {
 	if r, ok := p.pfds[file]; ok {
 		return r.doc, r.err
 	}
-	_, d, err := loadKind(PFDFile(file), model.KindPFD)
-	p.pfds[file] = pfdResult{doc: d, err: err}
-	return d, err
+	f, err := loadKind(PFDFile(file), model.KindPFD)
+	r := pfdResult{err: err}
+	if f != nil {
+		r.doc, r.format = f.PFD, f.Format
+	}
+	p.pfds[file] = r
+	return r.doc, r.err
+}
+
+// StoredFormat returns the format o's document was read in, reading it if needed. It returns ""
+// when there is no document, it cannot be read, or it was set rather than read.
+func (p *Project) StoredFormat(o Owner) store.Format {
+	if o.Kind == model.KindDSD {
+		p.DSD(o.Path)
+		return p.dsds[o.Path].format
+	}
+	p.PFD(o.Path)
+	return p.pfds[o.Path].format
 }
 
 // SetDSD makes dir resolve to d, as compile does with the document it is about to write.

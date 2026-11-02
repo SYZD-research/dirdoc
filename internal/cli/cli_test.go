@@ -188,7 +188,7 @@ func schema(t *testing.T, name string) *jsonschema.Schema {
 	return s
 }
 
-func validate(t *testing.T, s *jsonschema.Schema, data []byte) {
+func matchSchema(t *testing.T, s *jsonschema.Schema, data []byte) {
 	t.Helper()
 	v, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
 	if err != nil {
@@ -278,7 +278,7 @@ func TestGolden(t *testing.T) {
 				t.Errorf("output differs from %s (run `go test ./internal/cli -update` to accept):\n%s", path, got)
 			}
 			if c.json {
-				validate(t, view, []byte(r.stdout))
+				matchSchema(t, view, []byte(r.stdout))
 			}
 		})
 	}
@@ -309,7 +309,11 @@ func TestStoredFilesMatchSchemas(t *testing.T) {
 		if err != nil || d.IsDir() || filepath.Base(filepath.Dir(p)) != model.DirName {
 			return err
 		}
-		js, compressed, err := container.ReadFile(p)
+		data, err := os.ReadFile(p)
+		js, compressed := []byte(nil), false
+		if err == nil {
+			js, compressed, err = container.Decode(data)
+		}
 		if err != nil || !compressed {
 			t.Errorf("%s: compressed=%v err=%v", p, compressed, err)
 			return nil
@@ -318,7 +322,7 @@ func TestStoredFilesMatchSchemas(t *testing.T) {
 		if strings.HasSuffix(p, model.PFDSuffix) {
 			format = model.FormatPFD
 		}
-		validate(t, schemas[format], js)
+		matchSchema(t, schemas[format], js)
 		count++
 		return nil
 	})

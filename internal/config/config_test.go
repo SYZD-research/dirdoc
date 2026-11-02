@@ -18,15 +18,27 @@ func write(t *testing.T, content string) string {
 
 func TestLoad(t *testing.T) {
 	cfg, err := Load(filepath.Join(t.TempDir(), "missing.toml"))
-	if err != nil || !cfg.Compress() || cfg.Lint.SummaryMax.Entry != 120 {
+	if err != nil || cfg.Storage.Format != "zstd" || cfg.Lint.SummaryMax.Entry != 120 {
 		t.Fatalf("defaults: %+v %v", cfg, err)
 	}
 	cfg, err = Load(write(t, "[storage]\ncompression = \"none\"\n[lint]\nsummary_max = { dsd = 50 }\n"))
-	if err != nil || cfg.Compress() || cfg.Lint.SummaryMax.DSD != 50 || cfg.Lint.SummaryMax.PFD != 400 {
+	if err != nil || cfg.Storage.Format != "json" || cfg.Lint.SummaryMax.DSD != 50 || cfg.Lint.SummaryMax.PFD != 400 {
 		t.Fatalf("partial settings: %+v %v", cfg, err)
 	}
-	if cfg, err := Load(write(t, Template)); err != nil || cfg.Storage.Level != "best" {
+	if cfg, err := Load(write(t, Template)); err != nil || cfg.Storage.Level != "best" || cfg.Storage.Format != "zstd" {
 		t.Fatalf("template: %+v %v", cfg, err)
+	}
+	for content, want := range map[string]string{
+		"[storage]\nformat = \"toml\"\n":      "toml",
+		"[storage]\ncompression = \"zstd\"\n": "zstd",
+		"[storage]\nlevel = \"fastest\"\n":    "zstd",
+	} {
+		cfg, err := Load(write(t, content))
+		if err != nil {
+			t.Errorf("%q: %v", content, err)
+		} else if cfg.Storage.Format != want || cfg.Storage.Compression != "" {
+			t.Errorf("%q: format %q, compression %q (want %s)", content, cfg.Storage.Format, cfg.Storage.Compression, want)
+		}
 	}
 	cfg, err = Load(write(t, "[template]\nfunction = [\"## Errors \", \"Example\"]\n"))
 	if err != nil || strings.Join(cfg.Template.Headings("function"), "|") != "Errors|Example" || cfg.Template.Headings("dsd-entry") != nil {
@@ -35,6 +47,8 @@ func TestLoad(t *testing.T) {
 	for _, bad := range []string{
 		"[storage]\ncompresion = \"none\"\n",
 		"[storage]\ncompression = \"gzip\"\n",
+		"[storage]\nformat = \"yaml\"\n",
+		"[storage]\nformat = \"json\"\ncompression = \"none\"\n",
 		"[show]\nformat = \"html\"\n",
 		"[lint]\nsummary_max = { dsd = -1 }\n",
 		"[template]\nfunction = [\"\"]\n",

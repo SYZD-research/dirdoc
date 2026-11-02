@@ -1,9 +1,6 @@
 package diag
 
-import (
-	"strings"
-	"testing"
-)
+import "testing"
 
 func TestSortByLine(t *testing.T) {
 	l := List{
@@ -35,12 +32,5 @@ func TestDiagnosticString(t *testing.T) {
 	l := List{{Severity: Warning}, {Severity: Warning}}
 	if l.Failed(false) || !l.Failed(true) {
 		t.Error("Failed: warnings must fail only in strict mode")
-	}
-}
-
-func TestHeadings(t *testing.T) {
-	got := Headings("# One\ntext\n\n## `Two` *x*\n```\n# not\n```\nThree\n-----\n")
-	if strings.Join(got, "|") != "One|Two x|Three" {
-		t.Errorf("Headings = %q", got)
 	}
 }

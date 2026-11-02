@@ -1,5 +1,5 @@
-// Package diag defines diagnostics (errors and warnings with a code and a location) and the
-// validators that produce them for stored documents (design §12).
+// Package diag defines diagnostics: errors and warnings with a code and a location (design §12).
+// The validators that produce them for stored documents are in package validate.
 package diag
 
 import (
@@ -49,6 +49,7 @@ const (
 	CodeSummaryLong   = "summary-long"
 	CodeUnknownFile   = "unknown-file"
 	CodeSourceIgnored = "source-ignored"
+	CodeStorageFormat = "storage-format"
 
 	// Reported only when asked for (check --stale, check --undocumented) or configured ([template]).
 	CodeStale           = "stale"

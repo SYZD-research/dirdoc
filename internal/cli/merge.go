@@ -15,6 +15,8 @@ import (
 	"github.com/SYZD-research/dirdoc/internal/model"
 	"github.com/SYZD-research/dirdoc/internal/resolve"
 	"github.com/SYZD-research/dirdoc/internal/source"
+	"github.com/SYZD-research/dirdoc/internal/store"
+	"github.com/SYZD-research/dirdoc/internal/validate"
 )
 
 func (a *App) mergeDriverCmd() *cobra.Command {
@@ -40,10 +42,10 @@ markers, then store the file with: dirdoc compile TARGET FILE`,
 }
 
 type mergeSide struct {
-	kind       model.Kind
-	dsd        *model.DSD
-	pfd        *model.PFD
-	compressed bool
+	kind   model.Kind
+	dsd    *model.DSD
+	pfd    *model.PFD
+	format store.Format
 }
 
 func (a *App) readSide(name string, optional bool) (*mergeSide, error) {
@@ -54,15 +56,11 @@ func (a *App) readSide(name string, optional bool) (*mergeSide, error) {
 	if optional && len(bytes.TrimSpace(data)) == 0 {
 		return nil, nil // no common ancestor: both sides added the file
 	}
-	js, compressed, err := container.Decode(data)
+	f, err := store.Decode(data)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", name, err)
 	}
-	kind, d, pf, err := model.Decode(js)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", name, err)
-	}
-	return &mergeSide{kind: kind, dsd: d, pfd: pf, compressed: compressed}, nil
+	return &mergeSide{kind: f.Kind, dsd: f.DSD, pfd: f.PFD, format: f.Format}, nil
 }
 
 func (a *App) mergeDriver(basePath, oursPath, theirsPath, path string) error {
@@ -110,7 +108,7 @@ func (a *App) mergeDriver(basePath, oursPath, theirsPath, path string) error {
 		}
 		if p, err := resolve.Open(a.Cwd, owner); err == nil {
 			level, stored = container.Level(p.Config.Storage.Level), p.Rel(abs, false)
-			val := diag.Validator{P: p}
+			val := validate.Validator{P: p}
 			var l diag.List
 			if pf != nil {
 				p.SetPFD(owner, pf)
@@ -137,16 +135,8 @@ func (a *App) mergeDriver(basePath, oursPath, theirsPath, path string) error {
 	}
 
 	if len(conflicts) == 0 && len(errs) == 0 {
-		var js []byte
-		if pf != nil {
-			js, err = model.Marshal(pf)
-		} else {
-			js, err = model.Marshal(d)
-		}
-		if err == nil {
-			_, err = container.WriteFile(a.abs(oursPath), js, ours.compressed, level)
-		}
-		if err != nil {
+		// The result keeps the format of our side, as git expects of a merge driver.
+		if _, err := store.WriteFile(a.abs(oursPath), d, pf, store.Settings{Format: ours.format, Level: level}); err != nil {
 			return exitf(exitError, "%v", err)
 		}
 		return nil
