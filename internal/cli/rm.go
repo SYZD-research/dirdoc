@@ -8,10 +8,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/SYZD-research/dirdoc/internal/container"
 	"github.com/SYZD-research/dirdoc/internal/diag"
 	"github.com/SYZD-research/dirdoc/internal/model"
 	"github.com/SYZD-research/dirdoc/internal/resolve"
+	"github.com/SYZD-research/dirdoc/internal/store"
+	"github.com/SYZD-research/dirdoc/internal/validate"
 )
 
 func (a *App) rmCmd() *cobra.Command {
@@ -129,9 +130,10 @@ func (a *App) rmTarget(t *rmTarget) error {
 	}
 
 	// Refuse only the errors the removal introduces, such as a [[#id]] left pointing to it.
-	var doc any
+	var dsd *model.DSD
+	var pfd *model.PFD
 	var before, after diag.List
-	val := diag.Validator{P: p, FS: true}
+	val := validate.Validator{P: p, FS: true}
 	if t.isDir {
 		d, err := p.DSD(t.abs)
 		if err != nil {
@@ -157,7 +159,7 @@ func (a *App) rmTarget(t *rmTarget) error {
 			}
 		}
 		p.SetDSD(t.abs, d)
-		after, doc = val.DSD(t.abs, d), d
+		after, dsd = val.DSD(t.abs, d), d
 	} else {
 		pf, err := p.PFD(t.abs)
 		if err != nil {
@@ -179,7 +181,7 @@ func (a *App) rmTarget(t *rmTarget) error {
 		}
 		model.Reindex(pf)
 		p.SetPFD(t.abs, pf)
-		after, doc = val.PFD(t.abs, pf), pf
+		after, pfd = val.PFD(t.abs, pf), pf
 	}
 	had := map[diag.Diagnostic]bool{}
 	for _, d := range before {
@@ -195,11 +197,7 @@ func (a *App) rmTarget(t *rmTarget) error {
 		a.printDiags(a.Stderr, errs)
 		return exitf(exitError, "nothing removed: the document would have %s", plural(len(errs), "error"))
 	}
-	js, err := model.Marshal(doc)
-	if err != nil {
-		return exitf(exitError, "%v", err)
-	}
-	if _, err := container.WriteFile(docPath, js, p.Config.Compress(), container.Level(p.Config.Storage.Level)); err != nil {
+	if _, err := store.WriteFile(docPath, dsd, pfd, store.Configured(p.Config)); err != nil {
 		return exitf(exitError, "%v", err)
 	}
 	for _, id := range t.ids {

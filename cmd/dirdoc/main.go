@@ -14,6 +14,6 @@ func main() {
 		fmt.Fprintln(os.Stderr, "dirdoc:", err)
 		os.Exit(1)
 	}
-	app := &cli.App{Stdin: os.Stdin, Stdout: os.Stdout, Stderr: os.Stderr, Cwd: cwd, Getenv: os.Getenv}
+	app := &cli.App{Stdin: os.Stdin, Stdout: os.Stdout, Stderr: os.Stderr, Cwd: cwd, Getenv: os.Getenv, LookupEnv: os.LookupEnv}
 	os.Exit(app.Run(os.Args[1:]))
 }

@@ -15,6 +15,8 @@ import (
 	"github.com/SYZD-research/dirdoc/internal/model"
 	"github.com/SYZD-research/dirdoc/internal/render"
 	"github.com/SYZD-research/dirdoc/internal/resolve"
+	"github.com/SYZD-research/dirdoc/internal/store"
+	"github.com/SYZD-research/dirdoc/internal/validate"
 )
 
 type checkOptions struct {
@@ -106,25 +108,34 @@ func (a *App) check(args []string, o checkOptions) error {
 	start = a.startPath(args, p)
 	all := diag.List{}
 	docs := 0
-	val := diag.Validator{P: p, FS: true, Stale: o.stale, Undocumented: o.undocumented}
+	val := validate.Validator{P: p, FS: true, Stale: o.stale, Undocumented: o.undocumented}
+	want := store.Configured(p.Config).Format
+	storedAs := func(o resolve.Owner, path string) {
+		if f := p.StoredFormat(o); f != "" && f != want {
+			all.Warnf(diag.CodeStorageFormat, p.Rel(path, false),
+				"stored as %s, not as %s ([storage] format in dirdoc.toml); run `dirdoc convert` to convert it", f, want)
+		}
+	}
 	found := eachDocument(p, start,
 		func(dir string) {
 			docs++
 			d, err := p.DSD(dir)
 			if err != nil {
-				all = append(all, diag.LoadError(p.Rel(resolve.DSDFile(dir), false), err))
+				all = append(all, validate.LoadError(p.Rel(resolve.DSDFile(dir), false), err))
 				return
 			}
 			all = append(all, val.DSD(dir, d)...)
+			storedAs(resolve.DirOwner(dir), resolve.DSDFile(dir))
 		},
 		func(file string) {
 			docs++
 			pf, err := p.PFD(file)
 			if err != nil {
-				all = append(all, diag.LoadError(p.Rel(resolve.PFDFile(file), false), err))
+				all = append(all, validate.LoadError(p.Rel(resolve.PFDFile(file), false), err))
 				return
 			}
 			all = append(all, val.PFD(file, pf)...)
+			storedAs(resolve.FileOwner(file), resolve.PFDFile(file))
 		},
 		func(path string) {
 			all.Warnf(diag.CodeUnknownFile, p.Rel(path, false), "unknown file in .dirdoc/ (expected .dirdoc_dsd or <file>.dirdoc_pfd)")
@@ -142,7 +153,7 @@ func (a *App) check(args []string, o checkOptions) error {
 		a.Stdout.Write(b)
 	} else {
 		a.printDiags(a.Stdout, all)
-		fmt.Fprintf(a.Stdout, "checked %s: %s, %s\n", plural(docs, "document"), plural(e, "error"), plural(w, "warning"))
+		fmt.Fprintf(a.Stdout, "checked %s: %s, %s\n", plural(docs, "document"), a.count(e, "error", render.StyleError), a.count(w, "warning", render.StyleWarning))
 	}
 	if all.Failed(o.strict) {
 		return &exitErr{code: exitError}
@@ -157,7 +168,7 @@ func (a *App) searchCmd() *cobra.Command {
 	var limit int
 	c := &cobra.Command{
 		Use:   "search QUERY [PATH]",
-		Short: "Search the documentation below PATH (the stored files are compressed, so grep cannot)",
+		Short: "Search the documentation below PATH (the stored files may be compressed, so grep may not find anything)",
 		Long: `Search names, summaries, documents and tree notes below PATH (default: the whole project).
 The search ignores case unless QUERY contains an upper-case letter.`,
 		Args: usageArgs(cobra.RangeArgs(1, 2)),
@@ -276,7 +287,7 @@ func (a *App) search(args []string, re *regexp.Regexp, fields map[string]bool, f
 		func(dir string) {
 			d, err := p.DSD(dir)
 			if err != nil {
-				fmt.Fprintln(a.Stderr, diag.LoadError(p.Rel(resolve.DSDFile(dir), false), err).String())
+				fmt.Fprintln(a.Stderr, validate.LoadError(p.Rel(resolve.DSDFile(dir), false), err).String())
 				return
 			}
 			owner := resolve.DirOwner(dir)
@@ -302,7 +313,7 @@ func (a *App) search(args []string, re *regexp.Regexp, fields map[string]bool, f
 		func(file string) {
 			pf, err := p.PFD(file)
 			if err != nil {
-				fmt.Fprintln(a.Stderr, diag.LoadError(p.Rel(resolve.PFDFile(file), false), err).String())
+				fmt.Fprintln(a.Stderr, validate.LoadError(p.Rel(resolve.PFDFile(file), false), err).String())
 				return
 			}
 			owner := resolve.FileOwner(file)
@@ -341,13 +352,29 @@ func (a *App) search(args []string, re *regexp.Regexp, fields map[string]bool, f
 		if r.Summary != "" {
 			line += " — " + r.Summary
 		}
-		fmt.Fprintln(a.Stdout, line)
+		fmt.Fprintln(a.Stdout, a.searchLine(line, len(r.Ref), re))
 		if r.Field == "document" {
-			fmt.Fprintln(a.Stdout, "    "+r.Snippet)
+			fmt.Fprintln(a.Stdout, a.searchLine("    "+r.Snippet, 0, re))
 		}
 	}
 	if total > len(results) {
 		fmt.Fprintf(a.Stdout, "… %d more (raise --limit to see them)\n", total-len(results))
 	}
 	return nil
+}
+
+// searchLine colors a line of search results: the reference it starts with (refLen bytes) and the
+// text that matches.
+func (a *App) searchLine(line string, refLen int, re *regexp.Regexp) string {
+	if !a.color {
+		return line
+	}
+	p := render.NewPainter(line)
+	p.Paint(0, refLen, render.StyleRef)
+	for _, m := range re.FindAllStringIndex(line[refLen:], -1) {
+		if m[1] > m[0] {
+			p.Paint(refLen+m[0], refLen+m[1], render.StyleMatch)
+		}
+	}
+	return p.String()
 }

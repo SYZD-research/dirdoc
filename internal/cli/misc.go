@@ -14,9 +14,10 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/SYZD-research/dirdoc/internal/config"
-	"github.com/SYZD-research/dirdoc/internal/container"
 	"github.com/SYZD-research/dirdoc/internal/model"
+	"github.com/SYZD-research/dirdoc/internal/render"
 	"github.com/SYZD-research/dirdoc/internal/source"
+	"github.com/SYZD-research/dirdoc/internal/store"
 )
 
 func (a *App) catCmd() *cobra.Command {
@@ -35,19 +36,17 @@ func (a *App) catCmd() *cobra.Command {
 			if err != nil {
 				return exitf(exitError, "%v", err)
 			}
-			js, _, err := container.Decode(data)
-			if errors.Is(err, container.ErrUnknownFormat) && bytes.HasPrefix(data, []byte("# dirdoc ")) {
-				_, err = a.Stdout.Write(data) // a TOML source the merge driver left; show it as it is
+			f, err := store.Decode(data)
+			var se *store.SourceError
+			if errors.As(err, &se) {
+				_, err = a.Stdout.Write(data) // what a merge left (a source, conflict markers): show it as it is
 				return err
 			}
 			if err != nil {
 				return exitf(exitError, "%s: %v", args[0], err)
 			}
-			kind, d, pf, err := model.Decode(js)
-			if err != nil {
-				return exitf(exitError, "%s: %v", args[0], err)
-			}
-			if kind == model.KindDSD {
+			d, pf := f.DSD, f.PFD
+			if f.Kind == model.KindDSD {
 				_, err = fmt.Fprint(a.Stdout, source.EmitDSD(d, "dirdoc dsd"))
 			} else {
 				header := "dirdoc pfd: " + pf.Target
@@ -189,14 +188,18 @@ func (a *App) guideCmd() *cobra.Command {
 					lang = "ja"
 				}
 			}
+			text := guideEN
 			switch lang {
 			case "ja":
-				fmt.Fprint(a.Stdout, guideJA)
+				text = guideJA
 			case "en":
-				fmt.Fprint(a.Stdout, guideEN)
 			default:
 				return usagef(cmd, "unknown language %q (use ja or en)", lang)
 			}
+			if a.color {
+				text = render.Terminal(text)
+			}
+			fmt.Fprint(a.Stdout, text)
 			return nil
 		},
 	}

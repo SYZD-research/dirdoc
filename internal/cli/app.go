@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/SYZD-research/dirdoc/internal/diag"
+	"github.com/SYZD-research/dirdoc/internal/render"
 	"github.com/SYZD-research/dirdoc/internal/resolve"
 )
 
@@ -48,6 +49,16 @@ type App struct {
 	Stderr io.Writer
 	Cwd    string
 	Getenv func(string) string
+	// LookupEnv tells an unset variable from an empty one; when it is nil, an empty Getenv value
+	// counts as unset.
+	LookupEnv func(string) (string, bool)
+	// Terminal reports whether w is a terminal; when it is nil, w must be an *os.File on one.
+	Terminal func(w io.Writer) bool
+
+	noPager   bool   // --no-pager
+	colorMode string // --color
+	color     bool   // the command colors its output (design §11.3)
+	pager     *pager // the output a pager will show when the command ends
 }
 
 // exitErr ends the command with a code. A nil err means the details were already printed.
@@ -85,6 +96,13 @@ func (a *App) Run(args []string) int {
 	if a.Getenv == nil {
 		a.Getenv = os.Getenv
 	}
+	if a.LookupEnv == nil {
+		getenv := a.Getenv
+		a.LookupEnv = func(k string) (string, bool) {
+			v := getenv(k)
+			return v, v != ""
+		}
+	}
 	root := a.rootCmd()
 	if args == nil {
 		args = []string{} // cobra reads os.Args when given nil
@@ -94,6 +112,7 @@ func (a *App) Run(args []string) int {
 	root.SetOut(a.Stdout)
 	root.SetErr(a.Stderr)
 	err := root.Execute()
+	a.endPager() // before the error, which then shows below the output
 	if err == nil {
 		return exitOK
 	}
@@ -134,6 +153,15 @@ Run 'dirdoc guide' for the workflow to put in AGENTS.md or CLAUDE.md.`,
 		},
 	}
 	opts.register(root)
+	root.PersistentFlags().BoolVar(&a.noPager, "no-pager", false, "do not page the output (on a terminal, reading commands use $DIRDOC_PAGER, $PAGER or less)")
+	root.PersistentFlags().StringVar(&a.colorMode, "color", "auto", "color the output: auto (on a terminal), always or never")
+	root.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		switch a.colorMode {
+		case "auto", "always", "never":
+			return nil
+		}
+		return usagef(cmd, "unknown --color %q (use auto, always or never)", a.colorMode)
+	}
 	root.SetFlagErrorFunc(func(cmd *cobra.Command, err error) error { return usagef(cmd, "%v", err) })
 	root.CompletionOptions.DisableDefaultCmd = true
 
@@ -148,8 +176,11 @@ Run 'dirdoc guide' for the workflow to put in AGENTS.md or CLAUDE.md.`,
 	}
 	showOpts.register(show)
 
-	root.AddCommand(show, a.compileCmd(), a.exportCmd(), a.editCmd(), a.checkCmd(), a.searchCmd(), a.statusCmd(),
-		a.touchCmd(), a.rmCmd(), a.mvCmd(), a.catCmd(), a.initCmd(), a.guideCmd(), a.mergeDriverCmd(), a.mcpCmd())
+	a.reading(root, true)
+	root.AddCommand(a.reading(show, true), a.compileCmd(), a.reading(a.exportCmd(), false), a.editCmd(),
+		a.reading(a.checkCmd(), true), a.reading(a.searchCmd(), true), a.reading(a.statusCmd(), true),
+		a.touchCmd(), a.rmCmd(), a.mvCmd(), a.convertCmd(), a.reading(a.catCmd(), false), a.initCmd(),
+		a.reading(a.guideCmd(), true), a.mergeDriverCmd(), a.mcpCmd())
 	return root
 }
 
@@ -163,8 +194,28 @@ func (a *App) abs(p string) string {
 
 func (a *App) printDiags(w io.Writer, l diag.List) {
 	for _, d := range l {
-		fmt.Fprintln(w, d.String())
+		line := d.String()
+		if a.color && w == a.Stdout {
+			p := render.NewPainter(line)
+			sev := render.StyleWarning
+			if d.Severity == diag.Error {
+				sev = render.StyleError
+			}
+			p.Paint(0, len(d.Severity.String()), sev)
+			p.Refs()
+			line = p.String()
+		}
+		fmt.Fprintln(w, line)
 	}
+}
+
+// count prints n things, in style st when the output is colored and there are any.
+func (a *App) count(n int, word string, st render.Style) string {
+	s := plural(n, word)
+	if a.color && n > 0 {
+		s = render.Paint(s, st)
+	}
+	return s
 }
 
 // openProject opens the project containing abs.

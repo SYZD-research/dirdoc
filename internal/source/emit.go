@@ -157,7 +157,11 @@ summary = "What it is for"`)
 	return w.String()
 }
 
-type tomlWriter struct{ b strings.Builder }
+type tomlWriter struct {
+	b      strings.Builder
+	stored bool  // a stored document (EmitStored): every field is kept, and one TOML cannot hold is an error
+	err    error // the first field a stored document could not keep
+}
 
 func (w *tomlWriter) String() string { return w.b.String() }
 
@@ -202,21 +206,27 @@ func (w *tomlWriter) extras(cs conflicts, sec, id string, e model.Extra) {
 	}
 }
 
-// extra prints an "x-" field. Other unknown fields cannot be compiled back, so they are only noted.
+// extra prints an "x-" field. Other unknown fields cannot be compiled back, so a source only notes
+// them; a stored document keeps them all.
 func (w *tomlWriter) extra(k string, raw json.RawMessage) {
 	if raw == nil {
 		return
 	}
-	if !strings.HasPrefix(k, "x-") {
+	if !w.stored && !strings.HasPrefix(k, "x-") {
 		w.comment(fmt.Sprintf("dirdoc: field %q is not shown (unknown to this version)", k))
 		return
 	}
 	v, ok := tomlValue(raw)
-	if !ok {
+	switch {
+	case ok:
+		w.raw(tomlKey(k) + " = " + v)
+	case w.stored:
+		if w.err == nil {
+			w.err = fmt.Errorf("field %q holds null, which TOML cannot hold", k)
+		}
+	default:
 		w.comment(fmt.Sprintf("dirdoc: field %q has no TOML form (null)", k))
-		return
 	}
-	w.raw(tomlKey(k) + " = " + v)
 }
 
 var bareKeyRe = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)

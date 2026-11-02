@@ -1,6 +1,6 @@
 // Package compile turns a parsed source into the document to store: it merges with the existing
 // document when asked, normalizes text and generates the overview and the target hash. Validation is
-// diag.Validator's job.
+// validate.Validator's job.
 package compile
 
 import (
@@ -41,7 +41,7 @@ func Document(s string) string {
 	return strings.TrimRight(s, " \t\n")
 }
 
-// Locator maps the compiled document back to lines of the source; it implements diag.Locator.
+// Locator maps the compiled document back to lines of the source; it implements validate.Locator.
 type Locator struct {
 	top      map[string]int
 	treeLine int

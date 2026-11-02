@@ -13,6 +13,7 @@ import (
 	"github.com/SYZD-research/dirdoc/internal/model"
 	"github.com/SYZD-research/dirdoc/internal/resolve"
 	"github.com/SYZD-research/dirdoc/internal/source"
+	"github.com/SYZD-research/dirdoc/internal/validate"
 )
 
 // ViewVersion is the version of the JSON view schema (schema/view.v1.schema.json).
@@ -274,7 +275,7 @@ func (r *Renderer) Dir(dir string, inherit bool) (*DirView, error) {
 		for _, e := range d.Entries {
 			v.DSD = append(v.DSD, r.dsdEntry(dir, d, e, 4, w))
 		}
-		val := diag.Validator{P: p, FS: true}
+		val := validate.Validator{P: p, FS: true}
 		for _, dg := range val.DSD(dir, d) {
 			if displayCodes[dg.Code] {
 				w.add(dg)
@@ -292,11 +293,11 @@ func (r *Renderer) Dir(dir string, inherit bool) (*DirView, error) {
 		file := filepath.Join(dir, name)
 		pf, err := p.PFD(file)
 		if err != nil {
-			w.add(diag.LoadError(p.Rel(resolve.PFDFile(file), false), err))
+			w.add(validate.LoadError(p.Rel(resolve.PFDFile(file), false), err))
 			continue
 		}
 		v.Files = append(v.Files, r.fileSummary(file, pf, w))
-		val := diag.Validator{P: p, FS: true}
+		val := validate.Validator{P: p, FS: true}
 		for _, dg := range val.PFD(file, pf) {
 			if displayCodes[dg.Code] {
 				w.add(dg)
@@ -483,7 +484,7 @@ func (r *Renderer) File(file string) (*FileView, error) {
 		}
 		v.ReferencedBy = &refs
 	}
-	val := diag.Validator{P: r.P, FS: true}
+	val := validate.Validator{P: r.P, FS: true}
 	for _, dg := range val.PFD(file, pf) {
 		if displayCodes[dg.Code] {
 			w.add(dg)

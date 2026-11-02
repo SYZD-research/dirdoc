@@ -2,10 +2,8 @@ package container
 
 import (
 	"bytes"
-	"os"
-	"path/filepath"
+	"encoding/json"
 	"testing"
-	"time"
 )
 
 func TestEncodeDecode(t *testing.T) {
@@ -22,7 +20,8 @@ func TestEncodeDecode(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if compressed != compress || !sameJSON(out, js) {
+		var plain bytes.Buffer
+		if err := json.Compact(&plain, out); err != nil || compressed != compress || !bytes.Equal(plain.Bytes(), js) {
 			t.Errorf("compress=%v: Decode = %s (compressed %v)", compress, out, compressed)
 		}
 	}
@@ -49,36 +48,5 @@ func TestDecodeSizeLimit(t *testing.T) {
 	}
 	if _, _, err := Decode(data); err == nil {
 		t.Error("oversized document decoded without error")
-	}
-}
-
-func TestWriteFileSkipsSameContent(t *testing.T) {
-	path := filepath.Join(t.TempDir(), ".dirdoc", ".dirdoc_dsd")
-	js := []byte(`{"format":"dirdoc/dsd","version":1}`)
-	written, err := WriteFile(path, js, true, LevelBest)
-	if err != nil || !written {
-		t.Fatalf("first write: %v %v", written, err)
-	}
-	old := time.Now().Add(-time.Hour)
-	if err := os.Chtimes(path, old, old); err != nil {
-		t.Fatal(err)
-	}
-	indented := []byte("{\n  \"format\": \"dirdoc/dsd\",\n  \"version\": 1\n}")
-	if written, err := WriteFile(path, indented, true, LevelBest); err != nil || written {
-		t.Errorf("same JSON: written=%v err=%v", written, err)
-	}
-	if st, _ := os.Stat(path); !st.ModTime().Equal(old) {
-		t.Error("file was touched although the content is the same")
-	}
-	if written, _ := WriteFile(path, js, false, LevelBest); !written {
-		t.Error("switching to uncompressed storage did not rewrite the file")
-	}
-	data, _ := os.ReadFile(path)
-	if data[0] != '{' {
-		t.Errorf("uncompressed file starts with %q", data[0])
-	}
-	entries, _ := os.ReadDir(filepath.Dir(path))
-	if len(entries) != 1 {
-		t.Errorf("temporary files left behind: %v", entries)
 	}
 }

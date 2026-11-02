@@ -24,9 +24,12 @@ type Config struct {
 	Template BodyTemplate `toml:"template"`
 }
 
+// Storage says how .dirdoc_* files are written (design §4). Load fills Format from Compression,
+// the older spelling ("zstd" or "none"), and then clears Compression.
 type Storage struct {
+	Format      string `toml:"format"` // "zstd", "json" or "toml"
 	Compression string `toml:"compression"`
-	Level       string `toml:"level"`
+	Level       string `toml:"level"` // zstd only
 }
 
 type Walk struct {
@@ -73,15 +76,12 @@ func (t BodyTemplate) Headings(kind string) []string {
 // Default returns the settings used when dirdoc.toml is absent.
 func Default() *Config {
 	return &Config{
-		Storage: Storage{Compression: "zstd", Level: "best"},
+		Storage: Storage{Format: "zstd", Level: "best"},
 		Walk:    Walk{Gitignore: true},
 		Lint:    Lint{SummaryMax: SummaryMax{DSD: 200, PFD: 400, Entry: 120}},
 		Show:    Show{Format: "md"},
 	}
 }
-
-// Compress reports whether documents are stored zstd-compressed.
-func (c *Config) Compress() bool { return c.Storage.Compression != "none" }
 
 // Load reads path. A missing file yields the defaults; unknown keys and invalid values are errors.
 func Load(path string) (*Config, error) {
@@ -93,6 +93,7 @@ func Load(path string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	cfg.Storage.Format = "" // validate tells an explicit format apart from the older compression
 	dec := toml.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(cfg); err != nil {
@@ -110,10 +111,24 @@ func Load(path string) (*Config, error) {
 }
 
 func (c *Config) validate() error {
-	switch c.Storage.Compression {
-	case "zstd", "none":
+	s := &c.Storage
+	switch {
+	case s.Compression != "" && s.Format != "":
+		return errors.New("storage.compression is the older spelling of storage.format: keep only format")
+	case s.Compression == "zstd":
+		s.Format = "zstd"
+	case s.Compression == "none":
+		s.Format = "json"
+	case s.Compression != "":
+		return fmt.Errorf("storage.compression must be \"zstd\" or \"none\", not %q (or set storage.format)", s.Compression)
+	case s.Format == "":
+		s.Format = "zstd"
+	}
+	s.Compression = ""
+	switch s.Format {
+	case "zstd", "json", "toml":
 	default:
-		return fmt.Errorf("storage.compression must be \"zstd\" or \"none\", not %q", c.Storage.Compression)
+		return fmt.Errorf("storage.format must be \"zstd\", \"json\" or \"toml\", not %q", s.Format)
 	}
 	switch c.Storage.Level {
 	case "fastest", "default", "better", "best":
@@ -148,8 +163,8 @@ func (c *Config) validate() error {
 const Template = `# dirdoc project settings. This file also marks the project root.
 
 [storage]
-compression = "zstd"   # "zstd" | "none"
-level = "best"         # "fastest" | "default" | "better" | "best"
+format = "zstd"        # "zstd" (compressed JSON) | "json" | "toml"; run "dirdoc convert" after changing it
+level = "best"         # zstd level: "fastest" | "default" | "better" | "best"
 
 [walk]
 gitignore = true       # follow .gitignore files

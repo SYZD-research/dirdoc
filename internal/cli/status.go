@@ -10,10 +10,10 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/SYZD-research/dirdoc/internal/compile"
-	"github.com/SYZD-research/dirdoc/internal/container"
 	"github.com/SYZD-research/dirdoc/internal/model"
 	"github.com/SYZD-research/dirdoc/internal/render"
 	"github.com/SYZD-research/dirdoc/internal/resolve"
+	"github.com/SYZD-research/dirdoc/internal/store"
 )
 
 func (a *App) touchCmd() *cobra.Command {
@@ -71,11 +71,7 @@ func (a *App) touch(arg string) error {
 		return err
 	}
 	compile.Generate(pf, content)
-	js, err := model.Marshal(pf)
-	if err != nil {
-		return err
-	}
-	written, err := container.WriteFile(resolve.PFDFile(abs), js, p.Config.Compress(), container.Level(p.Config.Storage.Level))
+	written, err := store.WriteFile(resolve.PFDFile(abs), nil, pf, store.Configured(p.Config))
 	if err != nil {
 		return err
 	}
@@ -102,6 +98,12 @@ const (
 	stateNote      = "note"      // an ancestor's tree has a note on the file
 	stateNone      = "none"
 )
+
+// stateStyles color the states on a terminal.
+var stateStyles = map[string]render.Style{
+	stateDSD: render.StyleGood, statePFD: render.StyleGood, stateStale: render.StyleWarning,
+	stateOrphan: render.StyleError, stateNone: render.StyleFaint,
+}
 
 var (
 	dirStates  = []string{stateDSD, stateInherited, stateNone}
@@ -278,7 +280,11 @@ func (a *App) status(args []string, only map[string]bool, depth int, format stri
 		return err
 	}
 	for _, it := range rep.Items {
-		fmt.Fprintf(a.Stdout, "%-9s  %s\n", it.State, it.Path)
+		state := fmt.Sprintf("%-9s", it.State)
+		if st, ok := stateStyles[it.State]; ok && a.color {
+			state = render.Paint(it.State, st) + state[len(it.State):]
+		}
+		fmt.Fprintf(a.Stdout, "%s  %s\n", state, it.Path)
 	}
 	counts := func(m map[string]int, states []string) string {
 		var parts []string

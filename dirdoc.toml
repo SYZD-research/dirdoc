@@ -1,7 +1,7 @@
 # dirdoc project settings. This file also marks the project root.
 
 [storage]
-compression = "zstd"   # "zstd" | "none"
+format = "zstd"        # "zstd" | "json" | "toml"
 level = "best"         # "fastest" | "default" | "better" | "best"
 
 [walk]

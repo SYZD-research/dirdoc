@@ -32,7 +32,14 @@ func writeDoc(t *testing.T, path string, v any) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := container.WriteFile(path, js, true, container.LevelFastest); err != nil {
+	data, err := container.Encode(js, true, container.LevelFastest)
+	if err == nil {
+		err = os.MkdirAll(filepath.Dir(path), 0o755)
+	}
+	if err == nil {
+		err = os.WriteFile(path, data, 0o644)
+	}
+	if err != nil {
 		t.Fatal(err)
 	}
 }
